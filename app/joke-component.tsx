@@ -1,0 +1,16 @@
+'use client'
+import { useState } from 'react'
+import { Joke } from './joke'
+
+export const JokeComponent = ({ joke }: { joke?: Joke }) => {
+  const [showPunchline, setShowPunchline] = useState(false)
+
+  return (
+    <div className="bg-neutral-100 p-4 rounded-md m-4 max-w-prose flex items-center justify-between">
+      <p>{showPunchline ? joke?.punchline : joke?.setup}</p>
+      <button onClick={() => setShowPunchline(true)} disabled={showPunchline}>
+        Show Punchline!
+      </button>
+    </div>
+  )
+}
