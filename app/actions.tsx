@@ -1,39 +1,27 @@
 'use server'
 
-import { BotCard, BotMessage } from '@/components/llm/message'
-import { Price } from '@/components/llm/price'
-import { PriceSkeleton } from '@/components/llm/price-skeleton'
-import { Stats } from '@/components/llm/stats'
-import { StatsSkeleton } from '@/components/llm/stats-skeleton'
+import { BotMessage } from '@/components/llm/message'
 import { openai } from '@ai-sdk/openai'
 import type { CoreMessage, ToolInvocation } from 'ai'
 import { createAI, getMutableAIState, streamUI } from 'ai/rsc'
 import { MainClient } from 'binance'
 import { Loader2 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { z } from 'zod'
 
-import 'server-only'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
-import { type Chat } from '@/lib/types'
 import { createClient, getUser } from '@/lib/supabase/server'
-import { AccountSkeleton } from '@/components/llm/account-skeleton'
-import { Account } from '@/components/llm/account'
-import { TransactionSchema, transactionSchema } from '@/lib/transaction'
-import { TransactionForm } from '@/components/llm/transaction-form'
+import { type Chat } from '@/lib/types'
 import {
   createNewAccount,
   createTransaction,
   getCryptoPrice,
   getCryptoStats,
-  showAccountSummary
+  showAccountSummaries
 } from './tools'
 
 const supabase = createClient()
-
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 const binance = new MainClient({
   api_key: process.env.BINANCE_API_KEY,
@@ -51,6 +39,12 @@ export async function sendMessage(message: string): Promise<{
     .from('user_accounts_view')
     .select('*')
 
+  // let { data: user_data, error } = await supabase
+  //   .from('user_accounts_view')
+  //   .select('*')
+  //   .eq('uid', user?.id)
+  //   .single()
+
   const content = `\
   You are a financial manager bot, and you can help users track expenses, create accounts, and manage transactions such as income, expenses, and transfers.
 
@@ -59,7 +53,7 @@ export async function sendMessage(message: string): Promise<{
 
   If the user wants to track expenses, call \`track_expense\` to log the expense.
   If the user wants to create an account, call \`create_new_account\` to set up the new account.
-  If the user wants details about their account, call \`show_account_summary\` to show balance, account name, description.
+  If the user wants details about one or more accounts, call \`show_account_summaries\`.
   If the user wants to create a transaction (income, expense, transfer), call \`create_transaction\` to record the transaction.
   If the user wants advice on financial matters, call \`provide_advice\` to give them guidance.
 
@@ -89,8 +83,8 @@ export async function sendMessage(message: string): Promise<{
       ...history.get()
     ] as CoreMessage[],
     initial: (
-      <BotMessage className="items-center flex shrink-0 select-none justify-center">
-        <Loader2 className="h-5 w-5 animate-spin stroke-zinc-900" />
+      <BotMessage className="flex shrink-0 select-none items-center justify-center">
+        <Loader2 className="size-5 animate-spin stroke-zinc-900" />
       </BotMessage>
     ),
     text: ({ content, done }) => {
@@ -101,7 +95,7 @@ export async function sendMessage(message: string): Promise<{
     tools: {
       create_transaction: createTransaction,
       create_new_account: createNewAccount,
-      show_account_summary: showAccountSummary,
+      show_account_summary: showAccountSummaries(), // temp: changed to a function so we can pass parameters like AIState/history
       get_crypto_price: getCryptoPrice,
       get_crypto_stats: getCryptoStats
     },

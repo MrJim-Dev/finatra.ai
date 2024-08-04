@@ -1,18 +1,18 @@
 // tools.tsx
 
-import { z } from 'zod'
-import { BotCard, BotMessage } from '@/components/llm/message'
-import { AccountSkeleton } from '@/components/llm/account-skeleton'
 import { Account } from '@/components/llm/account'
+import { AccountSkeleton } from '@/components/llm/account-skeleton'
+import { BotCard, BotMessage } from '@/components/llm/message'
 import { Price } from '@/components/llm/price'
 import { PriceSkeleton } from '@/components/llm/price-skeleton'
 import { Stats } from '@/components/llm/stats'
 import { StatsSkeleton } from '@/components/llm/stats-skeleton'
 import { TransactionForm } from '@/components/llm/transaction-form'
-import { MainClient } from 'binance'
-import { transactionSchema } from '@/lib/transaction'
 import { createClient } from '@/lib/supabase/server'
+import { transactionSchema } from '@/lib/transaction'
 import { tool } from 'ai'
+import { MainClient } from 'binance'
+import { z } from 'zod'
 
 const supabase = createClient()
 
@@ -102,48 +102,64 @@ export const createNewAccount = tool({
   }
 })
 
-export const showAccountSummary = tool({
-  description:
-    'Shows and displays account summary of an account. This shows the balance, account name, and description.',
-  parameters: z.object({
-    userid: z
-      .string()
-      .describe('User id of the user which will be used to fetch data.'),
-    account_id: z
-      .string()
-      .describe('Account id of the account which will be used to fetch data.')
-  }),
-  generate: async function* ({
-    userid,
-    account_id
-  }: {
-    userid: string
-    account_id: string
-  }) {
-    yield (
-      <BotCard>
-        <p className="mb-2">Here is a summary of your account.</p>
-        <AccountSkeleton />
-      </BotCard>
-    )
+export const showAccountSummaries = () =>
+  tool({
+    description: "List account summaries of user's accounts.",
+    parameters: z.object({
+      userId: z.string().describe('ID of the user.'),
+      accountIds: z
+        .string()
+        .array()
+        .describe('Array of all account IDs to show.')
+        .min(1)
+    }),
+    generate: async function* ({
+      userId,
+      accountIds
+    }: {
+      userId: string
+      accountIds: string[]
+    }) {
+      yield (
+        <BotCard>
+          <p className="mb-2">Here is a summary of your account.</p>
+          <AccountSkeleton />
+        </BotCard>
+      )
 
-    const { data: account, error } = await supabase
-      .from('account_details_view')
-      .select('*')
-      .eq('uid', userid)
-      .eq('account_id', account_id)
-      .single()
+      // const { data: account, error } = await supabase
+      //   .from('account_details_view')
+      //   .select('*')
+      //   .eq('uid', userid)
+      //   .eq('account_id', account_id)
+      //   .single()
+      // rewrite to support multiple accounts (params array)
 
-    await new Promise(resolve => setTimeout(resolve, 1000))
+      console.log('--- HERE', accountIds)
 
-    return (
-      <BotCard>
-        <p className="mb-2">Here is a summary of your account.</p>
-        <Account name={account.name} price={account.balance} />
-      </BotCard>
-    )
-  }
-})
+      const accountsData = []
+      for (const account of accountIds) {
+        const { data: accountData, error } = await supabase
+          .from('account_details_view')
+          .select('*')
+          .eq('uid', userId)
+          .eq('account_id', account)
+          .single()
+        accountsData.push(accountData)
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 600))
+
+      return (
+        <BotCard>
+          <p className="mb-2">Here is a summary of your account.</p>
+          {accountsData.map(acc => (
+            <Account key={acc.id} name={acc.name} price={acc.balance} />
+          ))}
+        </BotCard>
+      )
+    }
+  })
 
 export const getCryptoPrice = tool({
   description:
