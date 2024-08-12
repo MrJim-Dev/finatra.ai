@@ -1,5 +1,15 @@
 import { cn } from '@/lib/utils'
 import { Sparkle, UserIcon } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
+
+// Helper function to determine if the children prop is a string
+const isString = (children: React.ReactNode): children is string => {
+  return typeof children === 'string'
+}
 
 // Different types of message bubbles.
 export function UserMessage({ children }: { children: React.ReactNode }) {
@@ -9,7 +19,17 @@ export function UserMessage({ children }: { children: React.ReactNode }) {
         <UserIcon />
       </div>
       <div className="ml-4 flex-1 space-y-2 overflow-hidden px-1">
-        {children}
+        {isString(children) ? (
+          <ReactMarkdown
+            className="markdown"
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex as any]}
+          >
+            {children}
+          </ReactMarkdown>
+        ) : (
+          children
+        )}
       </div>
     </div>
   )
@@ -28,7 +48,17 @@ export function BotMessage({
         <Sparkle />
       </div>
       <div className="ml-4 flex-1 space-y-2 overflow-hidden px-1">
-        {children}
+        {isString(children) ? (
+          <ReactMarkdown
+            className="markdown"
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex as any]}
+          >
+            {children}
+          </ReactMarkdown>
+        ) : (
+          children
+        )}
       </div>
     </div>
   )
@@ -51,7 +81,19 @@ export function BotCard({
       >
         <Sparkle />
       </div>
-      <div className="ml-4 flex-1 px-1">{children}</div>
+      <div className="ml-4 flex-1 px-1">
+        {isString(children) ? (
+          <ReactMarkdown
+            className="markdown"
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex as any]}
+          >
+            {children}
+          </ReactMarkdown>
+        ) : (
+          children
+        )}
+      </div>
     </div>
   )
 }
@@ -63,7 +105,19 @@ export function AssistantMessage({ children }: { children: React.ReactNode }) {
         'mt-2 flex items-center justify-center gap-2 text-xs text-gray-500'
       }
     >
-      <div className={'max-w-[600px] flex-initial px-2 py-2'}>{children}</div>
+      <div className={'max-w-[600px] flex-initial px-2 py-2'}>
+        {isString(children) ? (
+          <ReactMarkdown
+            className="markdown"
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={[rehypeKatex as any]}
+          >
+            {children}
+          </ReactMarkdown>
+        ) : (
+          children
+        )}
+      </div>
     </div>
   )
 }

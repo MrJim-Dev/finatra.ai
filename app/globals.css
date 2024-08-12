@@ -63,7 +63,54 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* MarkdownStyles.module.css */
+.markdown {
+  /* General Markdown styles */
+}
+
+.markdown h1 {
+  @apply text-2xl font-bold mt-4 mb-2;
+}
+
+.markdown h2 {
+  @apply text-xl font-bold mt-3 mb-2;
+}
+
+.markdown h3 {
+  @apply text-lg font-bold mt-3 mb-2;
+}
+
+.markdown p {
+  @apply mt-2 mb-2;
+}
+
+.markdown ul {
+  @apply list-disc list-inside mt-2 mb-2;
+}
+
+.markdown ol {
+  @apply list-decimal list-inside mt-2 mb-2;
+}
+
+.markdown li {
+  @apply mb-1;
+}
+
+.markdown table {
+  @apply w-full mt-2 mb-2 border-collapse border border-gray-300;
+}
+
+.markdown th,
+.markdown td {
+  @apply border border-gray-300 px-2 py-1;
+}
+
+.markdown th {
+  @apply bg-gray-200;
 }
