@@ -48,7 +48,7 @@ export async function sendMessage(message: string): Promise<{
   const { user } = await getUser()
 
   let { data: user_data, error } = await supabase
-    .from('user_accounts_view')
+    .from('account_details_view')
     .select('*')
 
   const content = `\
