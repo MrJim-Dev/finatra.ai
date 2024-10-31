@@ -1,60 +1,43 @@
-import type { Metadata } from 'next'
-import './globals.css'
-import { Open_Sans } from 'next/font/google'
-import { AI } from './actions'
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/toaster';
+import { cn } from '@/lib/utils';
+import type { Metadata } from 'next';
+import { Inter as FontSans } from 'next/font/google';
+import './prosemirror.css';
+import './globals.css';
 
-import { Toaster } from 'react-hot-toast'
-
-import { fontMono, fontSans } from '@/lib/fonts'
-import { cn } from '@/lib/utils'
-import { Header } from '@/components/header'
-
-//👇 Configure our font object
-const openSans = Open_Sans({
+const fontSans = FontSans({
   subsets: ['latin'],
-  display: 'swap'
-})
+  variable: '--font-sans',
+});
 export const metadata: Metadata = {
-  title: {
-    default: 'Next.js AI Chatbot',
-    template: `%s - Next.js AI Chatbot`
-  },
-  description: 'An AI-powered chatbot template built with Next.js and Vercel.',
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' }
-  ],
-  icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png'
-  }
-}
+  title: 'Featurize: Give Your Users a Voice and Elevate Your Product',
+  description:
+    'Listen to your users like never before. Featurize is the ultimate platform that enables startups, software developers, and businesses to seamlessly set up a feature request system. Give your users a voice, gather valuable insights, and prioritize features that truly matter',
+};
 
 export default function RootLayout({
-  children
+  children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
-    <AI>
-      <html lang="en" suppressHydrationWarning>
-        <head />
-        <body
-          className={cn(
-            'font-sans antialiased',
-            fontSans.variable,
-            fontMono.variable
-          )}
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          'min-h-screen bg-background font-sans antialiased',
+          fontSans.variable
+        )}
+      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          disableTransitionOnChange
         >
+          {children}
           <Toaster />
-          <div className="flex min-h-screen flex-col">
-            {/* @ts-ignore */}
-            <Header />
-            <main className="flex flex-1 flex-col bg-muted/50">{children}</main>
-          </div>
-        </body>
-      </html>
-    </AI>
-  )
+        </ThemeProvider>
+      </body>
+    </html>
+  );
 }
