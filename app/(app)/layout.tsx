@@ -28,6 +28,10 @@ interface LayoutProps {
 const Layout = async ({ children }: LayoutProps) => {
   const currentUser = await getUserData();
 
+  if (!currentUser) {
+    redirect('/login');
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar user={currentUser} />
