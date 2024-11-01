@@ -4,6 +4,11 @@ import CollapsibleSideNavbar from '@/components/collapsible_side_nav';
 import { SiteHeader } from '@/components/site-header';
 import { getUser, getUserById, getUserData } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { AppSidebar } from '@/components/app-sidebar';
+import { Separator } from '@/components/ui/separator';
+import { Breadcrumb, BreadcrumbPage, BreadcrumbSeparator, BreadcrumbLink, BreadcrumbItem, BreadcrumbList } from '@/components/ui/breadcrumb';
+import { FloatingActionButton } from '@/components/floating-action-button';
 
 interface LayoutProps {
   children: ReactNode;
@@ -12,28 +17,34 @@ interface LayoutProps {
 const Layout = async ({ children }: LayoutProps) => {
   const currentUser = await getUserData();
 
-  return (
-    <>
-      {/* <SiteHeader /> */}
-      <div className="md:hidden">
-        {/* You can add your mobile-specific layout or images here */}
-      </div>
-      <div className="hidden flex-col md:flex">
-        <CollapsibleSideNavbar userData={currentUser} />
-        {/* <div className="border-b">
-          <div className="flex h-16 items-center px-4">
-            <TeamSwitcher />
-            <MainNav className="mx-6" />
-            <div className="ml-auto flex items-center space-x-4">
-              <Search />
-              <UserNav />
-            </div>
+  return (  
+
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem className="hidden md:block">
+                  <BreadcrumbLink href="#">
+                    Building Your Application
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator className="hidden md:block" />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
-        </div> */}
-        <div className="flex-1 space-y-4 p-8 pt-6">{children}</div>
-        <Toaster />
-      </div>
-    </>
+        </header>
+        {children}
+        <FloatingActionButton />
+      </SidebarInset>
+    </SidebarProvider>
   );
 };
 

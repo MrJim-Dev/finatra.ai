@@ -1,117 +1,231 @@
-import { getUser } from '@/lib/supabase/server';
-import { capitalizeWords, dateAndTimeFormat } from '@/lib/utils';
-import Link from 'next/link';
+import { AppSidebar } from "@/components/app-sidebar"
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-} from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import ProjectIcon from '@/components/slug/project-icon';
-import { PlusIcon } from '@radix-ui/react-icons';
-import { Button } from '@/components/ui/button';
-import { getProjectsByUserId, getBookmarkedProjects } from '@/lib/project';
-import { redirect } from 'next/navigation';
-import { ProjectTypes } from '@/lib/types/project';
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Separator } from "@/components/ui/separator"
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import React from "react"
 
-export const metadata = {
-  title: 'Your Projects | Featurize',
-  description: 'Manage your projects and gather user feedback on Featurize.',
-};
+type Transaction = {
+  id: string
+  date: Date
+  description: string
+  amount: number
+  status: "pending" | "processing" | "success" | "failed"
+  category: string
+  account: string
+}
 
-export default async function ProjectPage() {
-  const { user } = await getUser();
+function groupTransactionsByDay(transactions: Transaction[]) {
+  return transactions.reduce((groups, transaction) => {
+    const date = transaction.date.toDateString()
+    if (!groups[date]) {
+      groups[date] = []
+    }
+    groups[date].push(transaction)
+    return groups
+  }, {} as Record<string, Transaction[]>)
+}
 
-  if (!user) {
-    redirect('/signin');
-  }
+function getDayTotal(transactions: Transaction[]) {
+  return transactions.reduce(
+    (acc, transaction) => {
+      if (transaction.amount > 0) {
+        acc.income += transaction.amount
+      } else {
+        acc.expense += Math.abs(transaction.amount)
+      }
+      return acc
+    },
+    { income: 0, expense: 0 }
+  )
+}
 
-  const projects = await getProjectsByUserId(user?.id as string);
-  const bookmarkedProjects = await getBookmarkedProjects(user?.id as string);
+export default function Page() {
+  const transactions: Transaction[] = [
+    {
+      id: "1",
+      date: new Date("2024-03-20"),
+      description: "Netflix Subscription",
+      amount: -19.99,
+      status: "success",
+      category: "Entertainment",
+      account: "Credit Card",
+    },
+    {
+      id: "2",
+      date: new Date("2024-03-20"),
+      description: "Salary Deposit",
+      amount: 5000,
+      status: "success",
+      category: "Income",
+      account: "Main Account",
+    },
+    {
+      id: "3",
+      date: new Date("2024-03-19"),
+      description: "Spotify Premium",
+      amount: 9.99,
+      status: "pending",
+      category: "Entertainment",
+      account: "Credit Card",
+    },
+    // Add more transactions as needed
+  ]
 
-  const ProjectGrid = ({
-    projects,
-    title,
-  }: {
-    projects: ProjectTypes[];
-    title: string;
-  }) => (
-    <>
-      <h2 className="text-3xl text-center sm:text-left font-bold tracking-tight sm:text-3xl mb-6">
-        {title}
-      </h2>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {projects.map((project) => (
-          <Link key={project.id} href={`/p/${project.slug}`}>
-            <Card className="h-full hover:scale-[1.02] transition-all ease-in duration-200">
-              <CardHeader className="flex flex-row justify-between items-start">
-                {project.icon_url ? (
-                  <ProjectIcon
-                    name={project?.name as string}
-                    icon_url={project.icon_url as string}
-                  />
-                ) : (
-                  <ProjectIcon name={project?.name as string} />
-                )}
-                <div className="flex gap-2">
-                  <Badge variant="secondary">{project.status}</Badge>
-                  <Badge variant="secondary">{project.privacy}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <h3 className="text-lg font-semibold text-gray-100">
-                  {capitalizeWords(project.name)}
-                </h3>
-                <p className="mt-2 line-clamp-3 text-sm text-gray-300">
-                  {project.description}
-                </p>
-              </CardContent>
-              <CardFooter className="flex items-center text-xs">
-                <p className="text-muted-foreground">
-                  Space reserved for project data count
-                </p>
-              </CardFooter>
-            </Card>
-          </Link>
-        ))}
-      </div>
-    </>
-  );
+  const groupedTransactions = groupTransactionsByDay(transactions)
 
   return (
-    <section className="container">
-      <div className="py-10 sm:py-10">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-10">
-            <h2 className="text-3xl text-center sm:text-left font-bold tracking-tight sm:text-3xl">
-              Dashboard
-            </h2>
-
-            <Link href="/p/create">
-              <Button>Add Project</Button>
-            </Link>
-          </div>
-
-          {projects && projects.length > 0 ? (
-            <ProjectGrid projects={projects} title="Your Projects" />
-          ) : (
-            <p className="mt-10 text-md text-muted-foreground">
-              You don't have any projects yet. Click{' '}
-              <Link href="/p/create">"Add Project"</Link> to get started.
-            </p>
-          )}
-
-          {bookmarkedProjects && bookmarkedProjects.length > 0 && (
-            <div className="mt-16">
-              <ProjectGrid
-                projects={bookmarkedProjects}
-                title="Saved Projects"
-              />
+    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <div className="rounded-xl bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
+            <div className="flex items-center gap-2">
+              <h3 className="text-2xl font-bold">$45,231.89</h3>
+              <span className="text-sm text-emerald-500">+20.1%</span>
             </div>
-          )}
+            <p className="text-xs text-muted-foreground">from last month</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-muted-foreground">Subscriptions</p>
+            <div className="flex items-center gap-2">
+              <h3 className="text-2xl font-bold">+2350</h3>
+              <span className="text-sm text-emerald-500">+180.1%</span>
+            </div>
+            <p className="text-xs text-muted-foreground">from last month</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-muted-foreground">Sales</p>
+            <div className="flex items-center gap-2">
+              <h3 className="text-2xl font-bold">+12,234</h3>
+              <span className="text-sm text-emerald-500">+19%</span>
+            </div>
+            <p className="text-xs text-muted-foreground">from last month</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-medium text-muted-foreground">Active Now</p>
+            <div className="flex items-center gap-2">
+              <h3 className="text-2xl font-bold">+573</h3>
+              <span className="text-sm text-emerald-500">+201</span>
+            </div>
+            <p className="text-xs text-muted-foreground">since last hour</p>
+          </div>
         </div>
       </div>
-    </section>
-  );
+
+      {/* Transactions Table */}
+      <div className="rounded-xl border bg-card">
+        <div className="p-6">
+          <h2 className="text-lg font-semibold">Recent Transactions</h2>
+        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="w-[40%]">Details</TableHead>
+              <TableHead className="w-[20%]">Category</TableHead>
+              <TableHead className="w-[20%]">Account</TableHead>
+              <TableHead className="w-[20%] text-right">Amount</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Object.entries(groupedTransactions).map(([date, dayTransactions]) => {
+              const { income, expense } = getDayTotal(dayTransactions)
+              return (
+                <React.Fragment key={date}>
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={4} className="bg-muted/50 py-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{date}</span>
+                        <div className="flex gap-4 text-sm">
+                          <span className="text-emerald-600">
+                            Income: ${income.toFixed(2)}
+                          </span>
+                          <span className="text-red-600">
+                            Expense: ${expense.toFixed(2)}
+                          </span>
+                          <span className="font-medium">
+                            Net: ${(income - expense).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                  {dayTransactions.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{transaction.description}</span>
+                          <span
+                            className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                              transaction.status === "success"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : transaction.status === "pending"
+                                ? "bg-yellow-50 text-yellow-700"
+                                : transaction.status === "failed"
+                                ? "bg-red-50 text-red-700"
+                                : "bg-blue-50 text-blue-700"
+                            }`}
+                          >
+                            {transaction.status}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="rounded-md bg-muted px-2 py-1 text-sm">
+                          {transaction.category}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {transaction.account}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span
+                          className={
+                            transaction.amount > 0
+                              ? "text-emerald-600"
+                              : "text-red-600"
+                          }
+                        >
+                          {transaction.amount > 0 ? "+" : "-"}$
+                          {Math.abs(transaction.amount).toFixed(2)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </React.Fragment>
+              )
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
 }
