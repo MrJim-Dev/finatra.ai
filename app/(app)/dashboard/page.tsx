@@ -1,230 +1,212 @@
-import { AppSidebar } from "@/components/app-sidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import React from "react"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 
 type Transaction = {
   id: string
   date: Date
   description: string
-  amount: number
-  status: "pending" | "processing" | "success" | "failed"
   category: string
+  amount: number
+  type: 'income' | 'expense'
   account: string
 }
 
-function groupTransactionsByDay(transactions: Transaction[]) {
-  return transactions.reduce((groups, transaction) => {
-    const date = transaction.date.toDateString()
+export default function Page() {
+  const currentMonth = "Jul 2020"
+  
+  // Expanded dummy data with multiple transactions per day
+  const transactions: Transaction[] = [
+    {
+      id: "1",
+      date: new Date("2020-07-29"),
+      description: "brunch with daniel",
+      category: "Social Life",
+      amount: 34.39,
+      type: 'expense',
+      account: "RBO Debit Card"
+    },
+    {
+      id: "2",
+      date: new Date("2020-07-29"),
+      description: "coffee meeting",
+      category: "Social Life",
+      amount: 12.50,
+      type: 'expense',
+      account: "RBO Debit Card"
+    },
+    {
+      id: "3",
+      date: new Date("2020-07-28"),
+      description: "ikea wardrobe",
+      category: "Household",
+      amount: 315.48,
+      type: 'expense',
+      account: "RBO Credit Card"
+    },
+    {
+      id: "4",
+      date: new Date("2020-07-28"),
+      description: "grocery shopping",
+      category: "Food",
+      amount: 89.32,
+      type: 'expense',
+      account: "HIBD Debit Card"
+    },
+    {
+      id: "5",
+      date: new Date("2020-07-27"),
+      description: "minimum fees",
+      category: "Transfer",
+      amount: 80.00,
+      type: 'expense',
+      account: "HIBD + Travel"
+    },
+    {
+      id: "6",
+      date: new Date("2020-07-24"),
+      description: "HIBD + House",
+      category: "Transfer",
+      amount: 300.00,
+      type: 'expense',
+      account: "HIBD"
+    },
+    {
+      id: "7",
+      date: new Date("2020-07-24"),
+      description: "Salary deposit",
+      category: "Income",
+      amount: 3500.00,
+      type: 'income',
+      account: "Main Account"
+    },
+    {
+      id: "8",
+      date: new Date("2020-07-22"),
+      description: "tax refunds",
+      category: "Income",
+      amount: 245.00,
+      type: 'income',
+      account: "Main Account"
+    },
+  ]
+
+  // Group transactions by date
+  const groupedTransactions = transactions.reduce((groups, transaction) => {
+    const date = transaction.date.toISOString().split('T')[0]
     if (!groups[date]) {
       groups[date] = []
     }
     groups[date].push(transaction)
     return groups
   }, {} as Record<string, Transaction[]>)
-}
 
-function getDayTotal(transactions: Transaction[]) {
-  return transactions.reduce(
-    (acc, transaction) => {
-      if (transaction.amount > 0) {
-        acc.income += transaction.amount
-      } else {
-        acc.expense += Math.abs(transaction.amount)
-      }
-      return acc
-    },
-    { income: 0, expense: 0 }
-  )
-}
-
-export default function Page() {
-  const transactions: Transaction[] = [
-    {
-      id: "1",
-      date: new Date("2024-03-20"),
-      description: "Netflix Subscription",
-      amount: -19.99,
-      status: "success",
-      category: "Entertainment",
-      account: "Credit Card",
-    },
-    {
-      id: "2",
-      date: new Date("2024-03-20"),
-      description: "Salary Deposit",
-      amount: 5000,
-      status: "success",
-      category: "Income",
-      account: "Main Account",
-    },
-    {
-      id: "3",
-      date: new Date("2024-03-19"),
-      description: "Spotify Premium",
-      amount: 9.99,
-      status: "pending",
-      category: "Entertainment",
-      account: "Credit Card",
-    },
-    // Add more transactions as needed
-  ]
-
-  const groupedTransactions = groupTransactionsByDay(transactions)
+  // Calculate totals
+  const totalIncome = 4831.89
+  const totalExpenses = 2442.93
+  const totalBalance = totalIncome - totalExpenses
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-xl bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium text-muted-foreground">Total Revenue</p>
-            <div className="flex items-center gap-2">
-              <h3 className="text-2xl font-bold">$45,231.89</h3>
-              <span className="text-sm text-emerald-500">+20.1%</span>
-            </div>
-            <p className="text-xs text-muted-foreground">from last month</p>
-          </div>
-        </div>
+    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+      {/* Month Navigation */}
+      <div className="flex items-center justify-between mb-4">
+        <button className="p-2 hover:bg-muted rounded-full">
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <span className="font-medium">{currentMonth}</span>
+        <button className="p-2 hover:bg-muted rounded-full">
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
 
-        <div className="rounded-xl bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium text-muted-foreground">Subscriptions</p>
-            <div className="flex items-center gap-2">
-              <h3 className="text-2xl font-bold">+2350</h3>
-              <span className="text-sm text-emerald-500">+180.1%</span>
-            </div>
-            <p className="text-xs text-muted-foreground">from last month</p>
-          </div>
-        </div>
+      {/* View Tabs */}
+      <Tabs defaultValue="daily" className="w-full">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="daily">Daily</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
+          <TabsTrigger value="weekly">Weekly</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly</TabsTrigger>
+          <TabsTrigger value="summary">Summary</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-        <div className="rounded-xl bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium text-muted-foreground">Sales</p>
-            <div className="flex items-center gap-2">
-              <h3 className="text-2xl font-bold">+12,234</h3>
-              <span className="text-sm text-emerald-500">+19%</span>
-            </div>
-            <p className="text-xs text-muted-foreground">from last month</p>
-          </div>
+      {/* Summary Totals */}
+      <div className="flex justify-between py-3 px-4 bg-muted/30 rounded-lg">
+        <div className="text-sm">
+          <span className="text-muted-foreground">Income</span>
+          <div className="text-blue-500 font-medium">$ {totalIncome.toFixed(2)}</div>
         </div>
-
-        <div className="rounded-xl bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium text-muted-foreground">Active Now</p>
-            <div className="flex items-center gap-2">
-              <h3 className="text-2xl font-bold">+573</h3>
-              <span className="text-sm text-emerald-500">+201</span>
-            </div>
-            <p className="text-xs text-muted-foreground">since last hour</p>
-          </div>
+        <div className="text-sm">
+          <span className="text-muted-foreground">Expenses</span>
+          <div className="text-red-500 font-medium">$ {totalExpenses.toFixed(2)}</div>
+        </div>
+        <div className="text-sm">
+          <span className="text-muted-foreground">Total</span>
+          <div className="font-medium">$ {totalBalance.toFixed(2)}</div>
         </div>
       </div>
 
-      {/* Transactions Table */}
-      <div className="rounded-xl border bg-card">
-        <div className="p-6">
-          <h2 className="text-lg font-semibold">Recent Transactions</h2>
-        </div>
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-[40%]">Details</TableHead>
-              <TableHead className="w-[20%]">Category</TableHead>
-              <TableHead className="w-[20%]">Account</TableHead>
-              <TableHead className="w-[20%] text-right">Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {Object.entries(groupedTransactions).map(([date, dayTransactions]) => {
-              const { income, expense } = getDayTotal(dayTransactions)
-              return (
-                <React.Fragment key={date}>
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={4} className="bg-muted/50 py-4">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{date}</span>
-                        <div className="flex gap-4 text-sm">
-                          <span className="text-emerald-600">
-                            Income: ${income.toFixed(2)}
-                          </span>
-                          <span className="text-red-600">
-                            Expense: ${expense.toFixed(2)}
-                          </span>
-                          <span className="font-medium">
-                            Net: ${(income - expense).toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+      {/* Transactions List */}
+      <div className="space-y-6">
+        {Object.entries(groupedTransactions)
+          .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+          .map(([date, dayTransactions]) => {
+            const dateObj = new Date(date)
+            const dayTotal = dayTransactions.reduce((sum, t) => 
+              sum + (t.type === 'expense' ? -t.amount : t.amount), 0)
+
+            return (
+              <div key={date} className="space-y-2">
+                {/* Date Header */}
+                <div className="flex items-center justify-between px-4">
+                  <div className="flex items-center gap-2">
+                    <div className="text-2xl font-semibold">
+                      {dateObj.getDate()}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground">
+                        {dateObj.toLocaleDateString('en-US', { weekday: 'long' })}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {dateObj.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`text-sm font-medium ${dayTotal >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                    $ {Math.abs(dayTotal).toFixed(2)}
+                  </div>
+                </div>
+                
+                {/* Day's Transactions */}
+                <div className="space-y-1">
                   {dayTransactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{transaction.description}</span>
-                          <span
-                            className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                              transaction.status === "success"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : transaction.status === "pending"
-                                ? "bg-yellow-50 text-yellow-700"
-                                : transaction.status === "failed"
-                                ? "bg-red-50 text-red-700"
-                                : "bg-blue-50 text-blue-700"
-                            }`}
-                          >
-                            {transaction.status}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="rounded-md bg-muted px-2 py-1 text-sm">
-                          {transaction.category}
+                    <div 
+                      key={transaction.id} 
+                      className="flex items-center justify-between py-2 px-4 bg-card rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm">{transaction.description}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {transaction.category} • {transaction.account}
                         </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {transaction.account}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span
-                          className={
-                            transaction.amount > 0
-                              ? "text-emerald-600"
-                              : "text-red-600"
-                          }
-                        >
-                          {transaction.amount > 0 ? "+" : "-"}$
-                          {Math.abs(transaction.amount).toFixed(2)}
+                      </div>
+                      <div className="flex gap-6">
+                        <span className={`text-sm ${
+                          transaction.type === 'income' ? 'text-blue-500' : 'text-muted-foreground'
+                        }`}>
+                          {transaction.type === 'income' ? `$ ${transaction.amount.toFixed(2)}` : '$ 0.00'}
                         </span>
-                      </TableCell>
-                    </TableRow>
+                        <span className={`text-sm ${
+                          transaction.type === 'expense' ? 'text-red-500' : 'text-muted-foreground'
+                        }`}>
+                          {transaction.type === 'expense' ? `$ ${transaction.amount.toFixed(2)}` : '$ 0.00'}
+                        </span>
+                      </div>
+                    </div>
                   ))}
-                </React.Fragment>
-              )
-            })}
-          </TableBody>
-        </Table>
+                </div>
+              </div>
+            )
+        })}
       </div>
     </div>
   )
