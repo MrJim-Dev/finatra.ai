@@ -86,7 +86,7 @@ export function SignUpForm({ className, ...props }: UserAuthFormProps) {
     if (isInternal) {
       window.location.href = referrer;
     } else {
-      window.location.href = '/p/create';
+      window.location.href = '/dashboard';
     }
   }
 
