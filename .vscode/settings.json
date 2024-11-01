@@ -20,5 +20,5 @@
   "tailwindCSS.experimental.classRegex": [
     ["cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
   ],
-  "cSpell.words": ["Featurize"]
+  "cSpell.words": ["Featurize", "tinycolor"]
 }
