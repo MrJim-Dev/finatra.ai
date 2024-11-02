@@ -17,7 +17,10 @@ import {
 import { NavMain } from '@/components/nav-main';
 import { NavProjects } from '@/components/nav-projects';
 import { NavUser } from '@/components/nav-user';
-import { TeamSwitcher } from '@/components/team-switcher';
+import {
+  PortfolioSwitcher,
+  TeamSwitcher,
+} from '@/components/portfolio-switcher';
 import {
   Sidebar,
   SidebarContent,
@@ -26,6 +29,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { UserData } from '@/lib/types/user';
+import { Portfolio } from '@/lib/types/portfolio';
 
 // This is sample data.
 const data = {
@@ -138,18 +142,20 @@ const data = {
   ],
 };
 
-export function AppSidebar(
-  { user }: { user: UserData }, // Added User type for user
-  { ...props }: React.ComponentProps<typeof Sidebar>
-) {
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  user: UserData;
+  portfolio: Portfolio[];
+}
+
+export function AppSidebar({ user, portfolio, ...props }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <PortfolioSwitcher portfolios={portfolio} />
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />

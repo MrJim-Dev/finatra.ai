@@ -24,6 +24,7 @@ import {
   FormItem,
   FormLabel,
 } from '@/components/ui/form';
+import { useRouter } from 'next/navigation';
 
 const supabase = createClient();
 
@@ -53,6 +54,8 @@ export function AddPortfolioDialog({
   onOpenChange,
 }: AddPortfolioDialogProps) {
   const { toast } = useToast();
+
+  const router = useRouter();
 
   const form = useForm<PortfolioFormValues>({
     resolver: zodResolver(portfolioSchema),
@@ -117,6 +120,8 @@ export function AddPortfolioDialog({
       });
 
       onOpenChange(false);
+
+      router.refresh();
       form.reset();
     } catch (error) {
       console.log(error);
