@@ -5,6 +5,7 @@ import { ChevronsUpDown, Plus } from 'lucide-react';
 import * as Ri from 'react-icons/ri';
 import tinycolor from 'tinycolor2';
 import { cn } from '@/lib/utils';
+import { useRouter, useParams } from 'next/navigation';
 
 import {
   DropdownMenu,
@@ -56,7 +57,21 @@ const IconComponent = ({
 
 export function PortfolioSwitcher({ portfolios }: { portfolios: Portfolio[] }) {
   const { isMobile } = useSidebar();
-  const [activePortfolio, setActivePortfolio] = React.useState(portfolios[0]);
+  const router = useRouter();
+  const params = useParams();
+
+  // Redirect to first portfolio if no slug is present
+  React.useEffect(() => {
+    if (!params.slug && portfolios.length > 0) {
+      router.push(`/dashboard/${portfolios[0].slug}`);
+    }
+  }, [params.slug, portfolios, router]);
+
+  // Find portfolio matching slug from params or default to first portfolio
+  const initialPortfolio =
+    portfolios.find((p) => p.slug === params.slug) || portfolios[0];
+  const [activePortfolio, setActivePortfolio] =
+    React.useState(initialPortfolio);
   const [showAddPortfolio, setShowAddPortfolio] = React.useState(false);
 
   return (
@@ -105,7 +120,10 @@ export function PortfolioSwitcher({ portfolios }: { portfolios: Portfolio[] }) {
             {portfolios.map((portfolio, index) => (
               <DropdownMenuItem
                 key={portfolio.port_id}
-                onClick={() => setActivePortfolio(portfolio)}
+                onClick={() => {
+                  setActivePortfolio(portfolio);
+                  router.push(`/dashboard/${portfolio.slug}`);
+                }}
                 className="gap-2 p-2"
               >
                 <div

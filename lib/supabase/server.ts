@@ -1,9 +1,10 @@
+"use server"
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { ProjectTypes } from '../types/project';
 import { User } from '@supabase/supabase-js';
 
-export function createClient() {
+export async function createClient() {
   const cookieStore = cookies();
 
   return createServerClient(
@@ -30,11 +31,11 @@ export function createClient() {
   );
 }
 
-export function getPublicUrl(bucket: string, path: string | null): string | null {
+export async function getPublicUrl(bucket: string, path: string | null): Promise<string | null> {
   if (path === null) {
     return null;
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = supabase
     .storage
     .from(bucket)
@@ -48,14 +49,14 @@ export function getPublicUrl(bucket: string, path: string | null): string | null
 }
 
 export async function getUser() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
   return data
 }
 
 export async function getUserData() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const {user} = await getUser();
 
@@ -73,7 +74,7 @@ export async function getUserData() {
 }
 
 export async function getUserById(id: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   let { data, error } = await supabase
     .from('users')
@@ -88,7 +89,7 @@ export async function getUserById(id: string) {
 }
 
 export async function getAllUsers() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { users },
     error,
@@ -106,7 +107,7 @@ export async function getAllUsers() {
 
 
 export async function sendPasswordRecovery(email: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   let { data, error } = await supabase.auth.resetPasswordForEmail(email);
 
   if (error) {

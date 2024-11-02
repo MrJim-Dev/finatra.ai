@@ -1,7 +1,5 @@
 import { ReactNode } from 'react';
 import { Toaster } from '@/components/ui/toaster';
-import CollapsibleSideNavbar from '@/components/collapsible_side_nav';
-import { SiteHeader } from '@/components/site-header';
 import { getUser, getUserById, getUserData } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import {
@@ -11,25 +9,18 @@ import {
 } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Separator } from '@/components/ui/separator';
-import {
-  Breadcrumb,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-  BreadcrumbLink,
-  BreadcrumbItem,
-  BreadcrumbList,
-} from '@/components/ui/breadcrumb';
+import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { FloatingActionButton } from '@/components/floating-action-button';
 import { createClient } from '@/lib/supabase/server';
 import { Portfolio } from '@/lib/types/portfolio';
 
-const supabase = createClient();
 interface LayoutProps {
   children: ReactNode;
 }
 
 const Layout = async ({ children }: LayoutProps) => {
   const currentUser = await getUserData();
+  const supabase = await createClient();
 
   if (!currentUser) {
     redirect('/login');
@@ -48,19 +39,7 @@ const Layout = async ({ children }: LayoutProps) => {
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">
-                    Building Your Application
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Data Fetching</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
+            <BreadcrumbNav />
           </div>
         </header>
         {children}

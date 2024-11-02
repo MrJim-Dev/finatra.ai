@@ -73,7 +73,7 @@ const data = {
     },
     {
       title: 'Accounts',
-      url: '/dashboard/accounts',
+      url: './accounts',
       icon: Bot,
     },
     {
