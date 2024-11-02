@@ -17,6 +17,7 @@ import * as z from 'zod';
 import { getPortfolioBySlug } from '@/lib/portfolio';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { useState } from 'react';
 
 interface NewGroupFormProps {
   open: boolean;
@@ -45,7 +46,12 @@ export function NewGroupForm({ open, onOpenChange }: NewGroupFormProps) {
     },
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const onSubmit = async (values: FormValues) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     try {
       // Get port_id from slug
       const portfolio = await getPortfolioBySlug(slug as string);
@@ -74,6 +80,8 @@ export function NewGroupForm({ open, onOpenChange }: NewGroupFormProps) {
         description: 'Failed to create account group',
         variant: 'destructive',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -124,8 +132,8 @@ export function NewGroupForm({ open, onOpenChange }: NewGroupFormProps) {
             </RadioGroup>
           </div>
 
-          <Button type="submit" className="w-full">
-            Create Group
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? 'Creating...' : 'Create Group'}
           </Button>
         </form>
       </DialogContent>

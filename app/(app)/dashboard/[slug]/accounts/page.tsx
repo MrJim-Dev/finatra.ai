@@ -8,82 +8,67 @@ import {
 import { Plus } from 'lucide-react';
 import { NewGroupForm } from '@/components/new-group-form';
 import { NewAccountButton } from '@/components/new-account-button';
+import { createClient } from '@/lib/supabase/server';
+import { getPortfolioBySlug } from '@/lib/portfolio';
 
+// Update types to match the database schema
 type Account = {
-  id: string;
+  account_id: string;
   name: string;
   amount: number;
-  balancePayable?: number;
-  outstandingBalance?: number;
+  description?: string;
+  in_total: boolean;
+  hidden: boolean;
+  created_at: string;
 };
 
 type AccountGroup = {
-  id: string;
-  name: string;
-  type?: 'credit' | 'regular';
+  group_id: string;
+  group_name: string;
   accounts: Account[];
 };
 
-export default function Page() {
-  // Summary totals
-  const accountTotal = 6928.12;
-  const liabilitiesTotal = 208542.65;
-  const totalBalance = -201614.53;
+// Make the component async
+export default async function Page({ params }: { params: { slug: string } }) {
+  const supabase = await createClient();
 
-  // Dummy data
-  const accountGroups: AccountGroup[] = [
-    {
-      id: '1',
-      name: 'Cash',
-      type: 'regular',
-      accounts: [{ id: '1', name: 'Cash', amount: 68.45 }],
-    },
-    {
-      id: '2',
-      name: 'Accounts',
-      type: 'regular',
-      accounts: [
-        { id: '2', name: 'HIBD', amount: 1455.05 },
-        { id: '3', name: 'RBO', amount: 1613.61 },
-      ],
-    },
-    {
-      id: '3',
-      name: 'Card',
-      type: 'credit',
-      accounts: [
-        {
-          id: '4',
-          name: 'HIBD Travel',
-          amount: -300.99,
-          balancePayable: -775.4,
-          outstandingBalance: 0.0,
-        },
-        {
-          id: '5',
-          name: 'RBO Credit Card',
-          amount: -1116.26,
-          balancePayable: -1416.25,
-          outstandingBalance: 0.0,
-        },
-      ],
-    },
-    {
-      id: '4',
-      name: 'Debit Card',
-      type: 'regular',
-      accounts: [
-        { id: '6', name: 'HIBD Debit Card', amount: 0.0 },
-        { id: '7', name: 'RBO Debit Card', amount: -99.99 },
-      ],
-    },
-    {
-      id: '5',
-      name: 'Savings',
-      type: 'regular',
-      accounts: [{ id: '8', name: 'RBO Saving', amount: 100.0 }],
-    },
-  ];
+  const portfolio = await getPortfolioBySlug(params.slug);
+
+  // Fetch data from Supabase
+  const { data: accountGroups, error } = await supabase
+    .from('user_accounts_grouped_view')
+    .select('*')
+    .eq('port_id', portfolio?.port_id);
+
+  if (error) {
+    console.error('Error fetching accounts:', error);
+    return <div>Error loading accounts</div>;
+  }
+
+  // Calculate summary totals from the actual data
+  const accountTotal =
+    accountGroups?.reduce((sum, group) => {
+      return (
+        sum +
+        group.accounts.reduce((accSum, acc) => {
+          return acc.in_total && acc.amount > 0 ? accSum + acc.amount : accSum;
+        }, 0)
+      );
+    }, 0) || 0;
+
+  const liabilitiesTotal =
+    accountGroups?.reduce((sum, group) => {
+      return (
+        sum +
+        group.accounts.reduce((accSum, acc) => {
+          return acc.in_total && acc.amount < 0
+            ? accSum + Math.abs(acc.amount)
+            : accSum;
+        }, 0)
+      );
+    }, 0) || 0;
+
+  const totalBalance = accountTotal - liabilitiesTotal;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -129,35 +114,30 @@ export default function Page() {
       </div>
 
       <div className="space-y-4">
-        {accountGroups.map((group) => (
-          <div key={group.id} className="rounded-lg">
+        {accountGroups?.map((group) => (
+          <div key={group.group_id} className="rounded-lg">
             <div className="px-4 py-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">
-                  {group.name}
+                  {group.group_name}
                 </span>
                 <span className="text-sm font-medium">
                   ${' '}
                   {group.accounts
-                    .reduce((sum, account) => sum + account.amount, 0)
+                    .reduce(
+                      (sum, account) =>
+                        sum + (account.in_total ? account.amount : 0),
+                      0
+                    )
                     .toFixed(2)}
                 </span>
               </div>
             </div>
             <div className="divide-y divide-border bg-card">
-              {group.accounts.map((account) => (
-                <div key={account.id} className="px-4 py-2.5">
-                  {group.type === 'credit' ? (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm flex-1">{account.name}</span>
-                      <span className="text-sm text-red-500 flex-1 text-right">
-                        $ {Math.abs(account.balancePayable || 0).toFixed(2)}
-                      </span>
-                      <span className="text-sm flex-1 text-right">
-                        $ {account.outstandingBalance?.toFixed(2)}
-                      </span>
-                    </div>
-                  ) : (
+              {group.accounts
+                .filter((account) => !account.hidden)
+                .map((account) => (
+                  <div key={account.account_id} className="px-4 py-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-sm">{account.name}</span>
                       <span
@@ -166,9 +146,8 @@ export default function Page() {
                         $ {Math.abs(account.amount).toFixed(2)}
                       </span>
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))}
             </div>
           </div>
         ))}

@@ -10,9 +10,11 @@ import {
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { NewGroupForm } from './new-group-form';
+import { NewAccountForm } from './new-account-form';
 
 export function NewAccountButton() {
   const [showNewGroupModal, setShowNewGroupModal] = useState(false);
+  const [showNewAccountModal, setShowNewAccountModal] = useState(false);
 
   return (
     <>
@@ -27,13 +29,21 @@ export function NewAccountButton() {
           <DropdownMenuItem onClick={() => setShowNewGroupModal(true)}>
             New Group
           </DropdownMenuItem>
-          <DropdownMenuItem>New Account</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setShowNewAccountModal(true)}>
+            New Account
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {console.log('showNewAccountModal:', showNewAccountModal)}
 
       <NewGroupForm
         open={showNewGroupModal}
         onOpenChange={setShowNewGroupModal}
+      />
+      <NewAccountForm
+        open={showNewAccountModal}
+        onOpenChange={setShowNewAccountModal}
       />
     </>
   );
