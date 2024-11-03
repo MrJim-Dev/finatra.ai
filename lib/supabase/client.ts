@@ -27,8 +27,6 @@ export async function getUserById(id: string) {
     data.avatar_url = avatarUrl;
   }
 
-  console.log(data);
-
   return data
 }
 

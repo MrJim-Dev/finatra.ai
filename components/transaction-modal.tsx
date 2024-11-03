@@ -300,7 +300,6 @@ function TransactionForm({
             <FormLabel>Account</FormLabel>
             <Select
               onValueChange={(value) => {
-                console.log('Selected value:', value);
                 field.onChange(value);
               }}
               value={field.value || ''}

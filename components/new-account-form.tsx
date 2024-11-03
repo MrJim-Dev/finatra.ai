@@ -79,7 +79,7 @@ export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
           .select('group_id, group_name')
           .eq('port_id', portfolio.port_id);
 
-        console.log(data, error);
+        // console.log(data, error);
 
         if (error) throw error;
         setAccountGroups(data || []);
