@@ -40,12 +40,8 @@ const renderOptions = (
 
     if (option.children) {
       return (
-        <DropdownMenuSub key={option.value} open={isOpen}>
+        <DropdownMenuSub key={option.value}>
           <DropdownMenuSubTrigger
-            onClick={(e) => {
-              e.preventDefault();
-              onSelect(option.value);
-            }}
             className={cn(
               'flex w-full items-center justify-between px-2 py-1.5 text-sm outline-none',
               isSelected && 'bg-accent text-accent-foreground'
