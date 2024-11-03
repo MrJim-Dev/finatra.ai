@@ -76,6 +76,23 @@ const data = {
       url: './accounts',
       icon: Bot,
     },
+
+    {
+      title: 'Categories',
+      url: '#',
+      icon: SquareTerminal,
+      isActive: true,
+      items: [
+        {
+          title: 'Income Categories',
+          url: './categories',
+        },
+        {
+          title: 'Expense Categories',
+          url: './categories',
+        },
+      ],
+    },
     {
       title: 'Documentation',
       url: '#',
