@@ -31,67 +31,14 @@ export default async function Page({ params }: { params: { slug: string } }) {
   const supabase = await createClient();
   const portfolio = await getPortfolioBySlug(params.slug);
 
-  // Updated dummy data with multi-level nesting
-  const categoryGroups = [
-    {
-      group_id: '1',
-      group_name: 'Income',
-      categories: [
-        {
-          category_id: '1',
-          name: 'Salary',
-          subcategories: [
-            {
-              category_id: '1-1',
-              name: 'Base Pay',
-              subcategories: [
-                { category_id: '1-1-1', name: 'Regular Hours' },
-                { category_id: '1-1-2', name: 'Overtime' },
-              ],
-            },
-            { category_id: '1-2', name: 'Bonus' },
-          ],
-        },
-        {
-          category_id: '2',
-          name: 'Investments',
-          subcategories: [
-            {
-              category_id: '2-1',
-              name: 'Dividends',
-              subcategories: [
-                { category_id: '2-1-1', name: 'Stocks' },
-                { category_id: '2-1-2', name: 'ETFs' },
-              ],
-            },
-            { category_id: '2-2', name: 'Interest' },
-          ],
-        },
-      ],
-    },
-    {
-      group_id: '2',
-      group_name: 'Expenses',
-      categories: [
-        {
-          category_id: '3',
-          name: 'Housing',
-          subcategories: [
-            { category_id: '3-1', name: 'Rent' },
-            { category_id: '3-2', name: 'Utilities' },
-          ],
-        },
-        {
-          category_id: '4',
-          name: 'Transportation',
-          subcategories: [
-            { category_id: '4-1', name: 'Gas' },
-            { category_id: '4-2', name: 'Maintenance' },
-          ],
-        },
-      ],
-    },
-  ];
+  const { data: categoryViewData, error } = await supabase
+    .from('category_view')
+    .select('*');
 
-  return <CategoryList categoryGroups={categoryGroups} />;
+  if (error) {
+    console.error('Error fetching categories:', error);
+    return null;
+  }
+
+  return <CategoryList categoryViewData={categoryViewData} />;
 }
