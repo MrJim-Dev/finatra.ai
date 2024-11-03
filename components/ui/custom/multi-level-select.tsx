@@ -36,20 +36,29 @@ const renderOptions = (
 ) => {
   return options.map((option) => {
     const isSelected = selectedValue === option.value;
-    const isOpen = openMenus.includes(option.value);
 
     if (option.children) {
       return (
         <DropdownMenuSub key={option.value}>
           <DropdownMenuSubTrigger
             className={cn(
-              'flex w-full items-center justify-between px-2 py-1.5 text-sm outline-none',
-              isSelected && 'bg-accent text-accent-foreground'
+              'flex w-full items-center px-2 py-1.5 text-sm outline-none',
+              isSelected && 'text-accent-foreground'
             )}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSelect(option.value);
+            }}
           >
-            {option.label}
+            <span className="truncate">{option.label}</span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="p-0">
+          <DropdownMenuSubContent
+            className="p-0 min-w-[200px] max-h-[300px] overflow-y-auto"
+            alignOffset={-4}
+            side="bottom"
+            sideOffset={0}
+          >
             {renderOptions(option.children, onSelect, selectedValue, openMenus)}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
@@ -60,12 +69,11 @@ const renderOptions = (
           key={option.value}
           onSelect={() => onSelect(option.value)}
           className={cn(
-            'flex w-full cursor-pointer items-center justify-between px-2 py-1.5 text-sm outline-none',
+            'flex w-full cursor-pointer items-center px-2 py-1.5 text-sm outline-none',
             isSelected && 'bg-accent text-accent-foreground'
           )}
         >
-          {option.label}
-          {isSelected && <Check className="ml-auto h-4 w-4" />}
+          <span className="truncate">{option.label}</span>
         </DropdownMenuItem>
       );
     }
@@ -79,7 +87,6 @@ export default function MultiLevelSelect({
   placeholder = 'Select an option',
 }: MultiLevelSelectProps) {
   const [openMenus, setOpenMenus] = React.useState<string[]>([]);
-  const [isOpen, setIsOpen] = React.useState(false);
 
   const handleSelect = (newValue: string) => {
     onChange?.(newValue);
@@ -119,22 +126,25 @@ export default function MultiLevelSelect({
 
   return (
     <div className="w-full">
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
             role="combobox"
-            aria-expanded={isOpen}
             className={cn(
               'w-full justify-between text-left font-normal',
-              isOpen && 'bg-accent text-accent-foreground'
+              openMenus.length > 0 && 'text-accent-foreground'
             )}
           >
             <span className="truncate">{getDisplayValue()}</span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] p-0">
+        <DropdownMenuContent
+          className="p-0 w-[var(--radix-dropdown-menu-trigger-width)] max-h-[300px] overflow-y-auto"
+          sideOffset={4}
+          align="start"
+        >
           <DropdownMenuRadioGroup value={value} onValueChange={handleSelect}>
             {renderOptions(options, handleSelect, value || '', openMenus)}
           </DropdownMenuRadioGroup>
