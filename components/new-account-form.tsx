@@ -108,7 +108,7 @@ export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
 
       const { error } = await supabase.from('accounts').insert({
         name: values.name,
-        amount: values.amount,
+        // amount: values.amount,
         description: values.description,
         group_id: values.group_id,
         port_id: portfolio.port_id,

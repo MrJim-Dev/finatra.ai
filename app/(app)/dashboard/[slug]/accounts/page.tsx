@@ -15,7 +15,7 @@ import { getPortfolioBySlug } from '@/lib/portfolio';
 type Account = {
   account_id: string;
   name: string;
-  amount: number;
+  balance: number;
   description?: string;
   in_total: boolean;
   hidden: boolean;
@@ -51,7 +51,9 @@ export default async function Page({ params }: { params: { slug: string } }) {
       return (
         sum +
         group.accounts.reduce((accSum, acc) => {
-          return acc.in_total && acc.amount > 0 ? accSum + acc.amount : accSum;
+          return acc.in_total && acc.balance > 0
+            ? accSum + acc.balance
+            : accSum;
         }, 0)
       );
     }, 0) || 0;
@@ -61,8 +63,8 @@ export default async function Page({ params }: { params: { slug: string } }) {
       return (
         sum +
         group.accounts.reduce((accSum, acc) => {
-          return acc.in_total && acc.amount < 0
-            ? accSum + Math.abs(acc.amount)
+          return acc.in_total && acc.balance < 0
+            ? accSum + Math.abs(acc.balance)
             : accSum;
         }, 0)
       );
@@ -126,7 +128,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
                   {group.accounts
                     .reduce(
                       (sum, account) =>
-                        sum + (account.in_total ? account.amount : 0),
+                        sum + (account.in_total ? account.balance : 0),
                       0
                     )
                     .toFixed(2)}
@@ -141,9 +143,9 @@ export default async function Page({ params }: { params: { slug: string } }) {
                     <div className="flex items-center justify-between">
                       <span className="text-sm">{account.name}</span>
                       <span
-                        className={`text-sm ${account.amount >= 0 ? 'text-blue-500' : 'text-red-500'}`}
+                        className={`text-sm ${account.balance >= 0 ? 'text-blue-500' : 'text-red-500'}`}
                       >
-                        $ {Math.abs(account.amount).toFixed(2)}
+                        $ {Math.abs(account.balance).toFixed(2)}
                       </span>
                     </div>
                   </div>

@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Check, ChevronDown } from 'lucide-react';
-
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,68 +13,20 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
 
-type Option = {
+export type Option = {
   label: string;
   value: string;
   children?: Option[];
 };
 
-const options: Option[] = [
-  {
-    label: 'Frontend Frameworks',
-    value: 'Frontend Frameworks',
-    children: [
-      {
-        label: 'React',
-        value: 'Frontend Frameworks.React',
-        children: [
-          { label: 'Hooks', value: 'Frontend Frameworks.React.Hooks' },
-          { label: 'Context', value: 'Frontend Frameworks.React.Context' },
-          { label: 'Redux', value: 'Frontend Frameworks.React.Redux' },
-        ],
-      },
-      {
-        label: 'Vue',
-        value: 'Frontend Frameworks.Vue',
-        children: [
-          {
-            label: 'Composition API',
-            value: 'Frontend Frameworks.Vue.Composition API',
-          },
-          { label: 'Vuex', value: 'Frontend Frameworks.Vue.Vuex' },
-          { label: 'Pinia', value: 'Frontend Frameworks.Vue.Pinia' },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Backend Frameworks',
-    value: 'Backend Frameworks',
-    children: [
-      {
-        label: 'Node.js',
-        value: 'Backend Frameworks.Node.js',
-        children: [
-          { label: 'Express', value: 'Backend Frameworks.Node.js.Express' },
-          { label: 'Koa', value: 'Backend Frameworks.Node.js.Koa' },
-          { label: 'Nest.js', value: 'Backend Frameworks.Node.js.Nest.js' },
-        ],
-      },
-      {
-        label: 'Python',
-        value: 'Backend Frameworks.Python',
-        children: [
-          { label: 'Django', value: 'Backend Frameworks.Python.Django' },
-          { label: 'Flask', value: 'Backend Frameworks.Python.Flask' },
-          { label: 'FastAPI', value: 'Backend Frameworks.Python.FastAPI' },
-        ],
-      },
-    ],
-  },
-];
+interface MultiLevelSelectProps {
+  options: Option[];
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+}
 
 const renderOptions = (
   options: Option[],
@@ -84,7 +35,7 @@ const renderOptions = (
   openMenus: string[]
 ) => {
   return options.map((option) => {
-    const isSelected = selectedValue.startsWith(option.value);
+    const isSelected = selectedValue === option.value;
     const isOpen = openMenus.includes(option.value);
 
     if (option.children) {
@@ -125,18 +76,20 @@ const renderOptions = (
   });
 };
 
-export default function MultiLevelSelect() {
-  const [selectedOption, setSelectedOption] = React.useState<string | null>(
-    null
-  );
+export default function MultiLevelSelect({
+  options,
+  value,
+  onChange,
+  placeholder = 'Select an option',
+}: MultiLevelSelectProps) {
   const [openMenus, setOpenMenus] = React.useState<string[]>([]);
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const handleSelect = (value: string) => {
-    setSelectedOption(value);
+  const handleSelect = (newValue: string) => {
+    onChange?.(newValue);
 
     // Update open menus
-    const parts = value.split('.');
+    const parts = newValue.split('.');
     const newOpenMenus = parts.reduce((acc: string[], part, index) => {
       if (index === 0) {
         return [part];
@@ -147,13 +100,29 @@ export default function MultiLevelSelect() {
     setOpenMenus(newOpenMenus);
   };
 
-  const getDisplayValue = (value: string | null) => {
-    if (!value) return 'Select an option';
-    return value.split('.').join(' / ');
+  const getDisplayValue = () => {
+    if (!value) return placeholder;
+    const path: string[] = [];
+    const findOptionPath = (opts: Option[], searchValue: string): boolean => {
+      for (const opt of opts) {
+        if (opt.value === searchValue) {
+          path.push(opt.label);
+          return true;
+        }
+        if (opt.children && findOptionPath(opt.children, searchValue)) {
+          path.unshift(opt.label);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    findOptionPath(options, value);
+    return path.length > 0 ? path.join('/') : placeholder;
   };
 
   return (
-    <div className="w-full max-w-[300px] sm:max-w-none">
+    <div className="w-full">
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <Button
@@ -161,25 +130,17 @@ export default function MultiLevelSelect() {
             role="combobox"
             aria-expanded={isOpen}
             className={cn(
-              'w-full sm:w-[300px] justify-between text-left font-normal',
+              'w-full justify-between text-left font-normal',
               isOpen && 'bg-accent text-accent-foreground'
             )}
           >
-            <span className="truncate">{getDisplayValue(selectedOption)}</span>
+            <span className="truncate">{getDisplayValue()}</span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-full sm:w-[300px] p-0">
-          <DropdownMenuRadioGroup
-            value={selectedOption || ''}
-            onValueChange={setSelectedOption}
-          >
-            {renderOptions(
-              options,
-              handleSelect,
-              selectedOption || '',
-              openMenus
-            )}
+        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] p-0">
+          <DropdownMenuRadioGroup value={value} onValueChange={handleSelect}>
+            {renderOptions(options, handleSelect, value || '', openMenus)}
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>

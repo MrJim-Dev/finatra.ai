@@ -28,48 +28,154 @@ import {
 import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from './ui/button';
+import MultiLevelSelect from '@/components/ui/custom/multi-level-select';
+import { useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/use-toast';
 
 interface TransactionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  accounts: Account[];
+  categoryView: CategoryView[];
+  portId: string;
 }
-
-const transactionSchema = z.object({
-  date: z.string().default(() => new Date().toISOString().split('T')[0]),
-  amount: z.string().min(1, 'Amount is required'),
-  category: z.string().optional(),
-  account: z.string().optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  note: z.string().max(100, 'Note must be less than 100 characters').optional(),
-  description: z
-    .string()
-    .max(500, 'Description must be less than 500 characters')
-    .optional(),
-});
-
-type TransactionFormData = z.infer<typeof transactionSchema>;
 
 export function TransactionModal({
   open,
   onOpenChange,
+  accounts,
+  categoryView,
+  portId,
 }: TransactionModalProps) {
-  const form = useForm<TransactionFormData>({
+  const supabase = createClient();
+  const [selectedType, setSelectedType] = useState<
+    'income' | 'expense' | 'transfer'
+  >('income');
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const transactionSchema = z
+    .object({
+      date: z.string().default(() => new Date().toISOString().split('T')[0]),
+      amount: z.string().min(1, 'Amount is required'),
+      category: z.string().min(1, 'Category is required'),
+      account: z.string().min(1, 'Account is required'),
+      to: z.string().optional(),
+      note: z
+        .string()
+        .max(100, 'Note must be less than 100 characters')
+        .optional(),
+      description: z
+        .string()
+        .max(500, 'Description must be less than 500 characters')
+        .optional(),
+    })
+    .refine(
+      (data) => {
+        if (selectedType === 'transfer') {
+          return !!data.to;
+        }
+        return true;
+      },
+      {
+        message: 'Destination account is required for transfers',
+        path: ['to'],
+      }
+    );
+
+  const form = useForm<z.infer<typeof transactionSchema>>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
       date: new Date().toISOString().split('T')[0],
       amount: '',
       category: '',
       account: '',
-      from: '',
       to: '',
       note: '',
       description: '',
     },
   });
 
-  const onSubmit = (data: TransactionFormData) => {
-    console.log(data);
+  const onSubmit = async (data: z.infer<typeof transactionSchema>) => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      const { date, amount, category, account, to, note, description } = data;
+
+      // Prepare base transaction data
+      const transactionData = {
+        transaction_date: new Date(date).toISOString(),
+        amount: parseFloat(amount),
+        note: note || null,
+        description: description || null,
+        port_id: portId,
+        transaction_type: selectedType,
+      };
+
+      if (selectedType === 'transfer') {
+        const { data: result, error } = await supabase
+          .from('transactions')
+          .insert({
+            ...transactionData,
+            account_id: account,
+            to_account_id: to,
+            category: null,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        toast({
+          title: 'Success',
+          description: 'Transfer has been created successfully',
+        });
+      } else {
+        const { data: result, error } = await supabase
+          .from('transactions')
+          .insert({
+            ...transactionData,
+            account_id: account,
+            category: category,
+            to_account_id: null,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        toast({
+          title: 'Success',
+          description: `${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} transaction has been created successfully`,
+        });
+      }
+
+      // Close modal and reset form on success
+      onOpenChange(false);
+      form.reset();
+      router.refresh();
+    } catch (error) {
+      console.error('Error creating transaction:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create transaction. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Filter categories based on transaction type and port_id
+  const getCategories = (type: 'income' | 'expense') => {
+    const categoryData = categoryView.find(
+      (cv) => cv.type === type && cv.port_id === portId
+    );
+    return categoryData?.categories || [];
   };
 
   return (
@@ -81,24 +187,47 @@ export function TransactionModal({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <Tabs defaultValue="income" className="w-full">
+            <Tabs
+              defaultValue="income"
+              className="w-full"
+              onValueChange={(value) =>
+                setSelectedType(value as typeof selectedType)
+              }
+            >
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="income">Income</TabsTrigger>
                 <TabsTrigger value="expense">Expense</TabsTrigger>
                 <TabsTrigger value="transfer">Transfer</TabsTrigger>
               </TabsList>
               <TabsContent value="income">
-                <TransactionForm type="income" form={form} />
+                <TransactionForm
+                  type="income"
+                  form={form}
+                  accounts={accounts}
+                  categories={getCategories('income')}
+                />
               </TabsContent>
               <TabsContent value="expense">
-                <TransactionForm type="expense" form={form} />
+                <TransactionForm
+                  type="expense"
+                  form={form}
+                  accounts={accounts}
+                  categories={getCategories('expense')}
+                />
               </TabsContent>
               <TabsContent value="transfer">
-                <TransferForm form={form} />
+                <TransferForm form={form} accounts={accounts} />
               </TabsContent>
             </Tabs>
-            <Button type="submit" className="w-full">
-              Create Transaction
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className="mr-2">Creating...</span>
+                  {/* Optional: Add a loading spinner component here */}
+                </>
+              ) : (
+                'Create Transaction'
+              )}
             </Button>
           </form>
         </Form>
@@ -110,10 +239,28 @@ export function TransactionModal({
 function TransactionForm({
   type,
   form,
+  accounts,
+  categories,
 }: {
   type: 'income' | 'expense';
-  form: UseFormReturn<TransactionFormData>;
+  form: UseFormReturn<z.infer<typeof transactionSchema>>;
+  accounts: Account[];
+  categories: Category[];
 }) {
+  // Transform categories into the format expected by MultiLevelSelect
+  const transformCategories = (cats: Category[]): Option[] => {
+    return cats.map((cat) => ({
+      label: cat.name,
+      value: cat.id.toString(), // Convert id to string
+      children:
+        cat.subcategories && cat.subcategories.length > 0
+          ? transformCategories(cat.subcategories)
+          : undefined,
+    }));
+  };
+
+  const categoryOptions = transformCategories(categories);
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -145,18 +292,45 @@ function TransactionForm({
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor={`${type}-account`}>Account</Label>
-        <Select>
-          <SelectTrigger>
-            <SelectValue placeholder="Select account" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="account1">Account 1</SelectItem>
-            <SelectItem value="account2">Account 2</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <FormField
+        control={form.control}
+        name="account"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Account</FormLabel>
+            <Select
+              onValueChange={(value) => {
+                console.log('Selected value:', value);
+                field.onChange(value);
+              }}
+              value={field.value || ''}
+            >
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select account">
+                    {field.value
+                      ? accounts.find(
+                          (account) => account.account_id === field.value
+                        )?.name
+                      : 'Select account'}
+                  </SelectValue>
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {accounts.map((account) => (
+                  <SelectItem
+                    key={account.account_id}
+                    value={account.account_id}
+                  >
+                    {account.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       <FormField
         control={form.control}
@@ -164,17 +338,15 @@ function TransactionForm({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Category</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="category1">Category 1</SelectItem>
-                <SelectItem value="category2">Category 2</SelectItem>
-              </SelectContent>
-            </Select>
+            <FormControl>
+              <MultiLevelSelect
+                options={categoryOptions}
+                value={field.value}
+                onChange={field.onChange}
+                placeholder="Select category"
+              />
+            </FormControl>
+            <FormMessage />
           </FormItem>
         )}
       />
@@ -232,7 +404,13 @@ function TransactionForm({
   );
 }
 
-function TransferForm({ form }: { form: UseFormReturn<TransactionFormData> }) {
+function TransferForm({
+  form,
+  accounts,
+}: {
+  form: UseFormReturn<z.infer<typeof transactionSchema>>;
+  accounts: Account[];
+}) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
@@ -266,19 +444,31 @@ function TransferForm({ form }: { form: UseFormReturn<TransactionFormData> }) {
 
       <FormField
         control={form.control}
-        name="from"
+        name="account"
         render={({ field }) => (
           <FormItem>
             <FormLabel>From</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <Select onValueChange={field.onChange} value={field.value || ''}>
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select account" />
+                  <SelectValue>
+                    {field.value
+                      ? accounts.find(
+                          (account) => account.account_id === field.value
+                        )?.name
+                      : 'Select account'}
+                  </SelectValue>
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="account1">Account 1</SelectItem>
-                <SelectItem value="account2">Account 2</SelectItem>
+                {accounts.map((account) => (
+                  <SelectItem
+                    key={account.account_id}
+                    value={account.account_id}
+                  >
+                    {account.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <FormMessage />
@@ -292,15 +482,27 @@ function TransferForm({ form }: { form: UseFormReturn<TransactionFormData> }) {
         render={({ field }) => (
           <FormItem>
             <FormLabel>To</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
+            <Select onValueChange={field.onChange} value={field.value || ''}>
               <FormControl>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select account" />
+                  <SelectValue>
+                    {field.value
+                      ? accounts.find(
+                          (account) => account.account_id === field.value
+                        )?.name
+                      : 'Select account'}
+                  </SelectValue>
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                <SelectItem value="account1">Account 1</SelectItem>
-                <SelectItem value="account2">Account 2</SelectItem>
+                {accounts.map((account) => (
+                  <SelectItem
+                    key={account.account_id}
+                    value={account.account_id}
+                  >
+                    {account.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <FormMessage />
