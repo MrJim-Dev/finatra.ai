@@ -1,8 +1,9 @@
 'use client';
 
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface Transaction {
   id: string;
@@ -34,24 +35,14 @@ interface Transaction {
 
 interface TransactionViewProps {
   portfolioId: string;
-  transactions: Transaction[];
-  currentDate: Date;
-  totals: {
-    income: number;
-    expenses: number;
-    balance: number;
-  };
 }
 
-export function TransactionsView({
-  portfolioId,
-  transactions,
-  currentDate,
-  totals,
-}: TransactionViewProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+export function TransactionsView({ portfolioId }: TransactionViewProps) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [totalBalance, setTotalBalance] = useState(0);
 
   // Group transactions by date
   const groupedTransactions = transactions.reduce(
@@ -71,26 +62,71 @@ export function TransactionsView({
     year: 'numeric',
   });
 
+  useEffect(() => {
+    async function fetchTransactions() {
+      const supabase = createClient();
+
+      // Get current month's start and end dates
+      const startOfMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        1
+      );
+      const endOfMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      );
+
+      // Update the select statement to use the view and include all fields
+      const { data: monthTransactions, error } = await supabase
+        .from('transactions_view')
+        .select('*')
+        .eq('port_id', portfolioId)
+        .gte('transaction_date', startOfMonth.toISOString())
+        .lte('transaction_date', endOfMonth.toISOString())
+        .order('transaction_date', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching transactions:', error);
+        return;
+      }
+
+      // Update transactions and calculate totals
+      setTransactions(monthTransactions || []);
+
+      const income =
+        monthTransactions?.reduce(
+          (sum, t) =>
+            t.transaction_type === 'income' ? sum + Number(t.amount) : sum,
+          0
+        ) || 0;
+
+      const expenses =
+        monthTransactions?.reduce(
+          (sum, t) =>
+            t.transaction_type === 'expense' ? sum + Number(t.amount) : sum,
+          0
+        ) || 0;
+
+      setTotalIncome(income);
+      setTotalExpenses(expenses);
+      setTotalBalance(income - expenses);
+    }
+
+    fetchTransactions();
+  }, [currentDate, portfolioId]);
+
   const handlePreviousMonth = () => {
-    const newDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() - 1
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() - 1)
     );
-    const params = new URLSearchParams(searchParams);
-    params.set('month', String(newDate.getMonth() + 1));
-    params.set('year', String(newDate.getFullYear()));
-    router.push(`${pathname}?${params.toString()}`);
   };
 
   const handleNextMonth = () => {
-    const newDate = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1
+    setCurrentDate(
+      new Date(currentDate.getFullYear(), currentDate.getMonth() + 1)
     );
-    const params = new URLSearchParams(searchParams);
-    params.set('month', String(newDate.getMonth() + 1));
-    params.set('year', String(newDate.getFullYear()));
-    router.push(`${pathname}?${params.toString()}`);
   };
 
   return (
@@ -128,18 +164,18 @@ export function TransactionsView({
         <div className="text-sm">
           <span className="text-muted-foreground">Income</span>
           <div className="text-blue-500 font-medium">
-            $ {totals.income.toFixed(2)}
+            $ {totalIncome.toFixed(2)}
           </div>
         </div>
         <div className="text-sm">
           <span className="text-muted-foreground">Expenses</span>
           <div className="text-red-500 font-medium">
-            $ {totals.expenses.toFixed(2)}
+            $ {totalExpenses.toFixed(2)}
           </div>
         </div>
         <div className="text-sm">
           <span className="text-muted-foreground">Total</span>
-          <div className="font-medium">$ {totals.balance.toFixed(2)}</div>
+          <div className="font-medium">$ {totalBalance.toFixed(2)}</div>
         </div>
       </div>
 

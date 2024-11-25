@@ -13,6 +13,10 @@ import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { FloatingActionButton } from '@/components/floating-action-button';
 import { createClient } from '@/lib/supabase/server';
 import { Portfolio } from '@/lib/types/portfolio';
+import { RightSidebarToggle } from '@/components/right-sidebar-toggle';
+import { getRightSidebarState } from '@/lib/actions/sidebar';
+import { AIChatButton } from '@/components/ai-chat-button';
+import { AIChatInterface } from '@/components/ai-chat-interface';
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,6 +25,7 @@ interface LayoutProps {
 const Layout = async ({ children }: LayoutProps) => {
   const currentUser = await getUserData();
   const supabase = await createClient();
+  const isRightSidebarOpen = await getRightSidebarState();
 
   if (!currentUser) {
     redirect('/login');
@@ -35,15 +40,30 @@ const Layout = async ({ children }: LayoutProps) => {
     <SidebarProvider>
       <AppSidebar user={currentUser} portfolio={portfolio as Portfolio[]} />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <BreadcrumbNav />
+        <div className="flex h-full">
+          <div className="flex-1 flex flex-col">
+            <header className="flex h-16 shrink-0 items-center gap-2 justify-between">
+              <div className="flex items-center gap-2 px-4">
+                <SidebarTrigger className="-ml-1" />
+                <Separator orientation="vertical" className="mr-2 h-4" />
+                <BreadcrumbNav />
+              </div>
+            </header>
+
+            <div className="flex-1 relative overflow-y-auto">
+              <div className="min-h-full">{children}</div>
+
+              {!isRightSidebarOpen && (
+                <div className="fixed bottom-6 right-6 flex gap-2 z-50">
+                  <AIChatButton />
+                  <FloatingActionButton />
+                </div>
+              )}
+            </div>
           </div>
-        </header>
-        {children}
-        <FloatingActionButton />
+
+          <AIChatInterface />
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

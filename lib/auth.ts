@@ -5,7 +5,7 @@ import { createClient } from './supabase/server';
 import { Provider, User } from '@supabase/supabase-js';
 
 export async function signInWithOtp(email: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   let { data, error } = await supabase.auth.signInWithOtp({
     email: email,
   });
@@ -16,7 +16,7 @@ export async function signInWithOtp(email: string) {
 
 
 export async function signUp(email: string, password: string, firstName: string, lastName: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -38,13 +38,13 @@ export async function signUp(email: string, password: string, firstName: string,
 
 
 export async function signOut() {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.auth.signOut();
   return redirect('/');
 }
 
 export async function signInWithPassword(email: string, password: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -63,7 +63,7 @@ export async function signInWithPassword(email: string, password: string) {
 
 export async function signInWith(provider: Provider) {
   const origin = headers().get("origin");
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,

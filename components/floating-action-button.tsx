@@ -89,7 +89,7 @@ export function FloatingActionButton({ className }: { className?: string }) {
       <Button
         onClick={() => setOpen(true)}
         className={cn(
-          'fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg',
+          'h-14 w-14 rounded-full shadow-lg',
           'hover:scale-105 transition-transform',
           className
         )}
