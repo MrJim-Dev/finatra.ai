@@ -63,88 +63,90 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
     year: 'numeric',
   });
 
-  useEffect(() => {
-    async function fetchTransactions() {
-      const supabase = createClient();
+  // Function to fetch transactions and update totals
+  const fetchTransactions = async () => {
+    const supabase = createClient();
 
-      // Get current month's start and end dates
-      const startOfMonth = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth(),
-        1
-      );
-      const endOfMonth = new Date(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + 1,
-        0
-      );
+    // Get current month's start and end dates
+    const startOfMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth(),
+      1
+    );
+    const endOfMonth = new Date(
+      currentDate.getFullYear(),
+      currentDate.getMonth() + 1,
+      0
+    );
 
-      // Update the select statement to use the view and include all fields
-      const { data: monthTransactions, error } = await supabase
-        .from('transactions_view')
-        .select('*')
-        .eq('port_id', portfolioId)
-        .gte('transaction_date', startOfMonth.toISOString())
-        .lte('transaction_date', endOfMonth.toISOString())
-        .order('transaction_date', { ascending: false });
+    // Update the select statement to use the view and include all fields
+    const { data: monthTransactions, error } = await supabase
+      .from('transactions_view')
+      .select('*')
+      .eq('port_id', portfolioId)
+      .gte('transaction_date', startOfMonth.toISOString())
+      .lte('transaction_date', endOfMonth.toISOString())
+      .order('transaction_date', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching transactions:', error);
-        return;
-      }
-
-      // Update transactions and calculate totals
-      setTransactions(monthTransactions || []);
-
-      const income =
-        monthTransactions?.reduce(
-          (sum, t) =>
-            t.transaction_type === 'income' ? sum + Number(t.amount) : sum,
-          0
-        ) || 0;
-
-      const expenses =
-        monthTransactions?.reduce(
-          (sum, t) =>
-            t.transaction_type === 'expense' ? sum + Number(t.amount) : sum,
-          0
-        ) || 0;
-
-      setTotalIncome(income);
-      setTotalExpenses(expenses);
-      setTotalBalance(income - expenses);
+    if (error) {
+      console.error('Error fetching transactions:', error);
+      return;
     }
 
+    // Update transactions and calculate totals
+    setTransactions(monthTransactions || []);
+
+    const income =
+      monthTransactions?.reduce(
+        (sum: number, t: Transaction) =>
+          t.transaction_type === 'income' ? sum + Number(t.amount) : sum,
+        0
+      ) || 0;
+
+    const expenses =
+      monthTransactions?.reduce(
+        (sum: number, t: Transaction) =>
+          t.transaction_type === 'expense' ? sum + Number(t.amount) : sum,
+        0
+      ) || 0;
+
+    setTotalIncome(income);
+    setTotalExpenses(expenses);
+    setTotalBalance(income - expenses);
+  };
+
+  // Function to fetch accounts and categories
+  const fetchAccountsAndCategories = async () => {
+    const supabase = createClient();
+
+    // Fetch accounts
+    const { data: accountsData } = await supabase
+      .from('accounts')
+      .select('*')
+      .eq('port_id', portfolioId);
+
+    if (accountsData) {
+      setAccounts(accountsData);
+    }
+
+    // Fetch categories
+    const { data: categoriesData } = await supabase
+      .from('category_view')
+      .select('*')
+      .eq('port_id', portfolioId);
+
+    if (categoriesData) {
+      setCategoryView(categoriesData);
+    }
+  };
+
+  // Initial data fetch
+  useEffect(() => {
     fetchTransactions();
   }, [currentDate, portfolioId]);
 
-  // Fetch accounts and categories
   useEffect(() => {
-    async function fetchData() {
-      const supabase = createClient();
-
-      // Fetch accounts
-      const { data: accountsData } = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('port_id', portfolioId);
-
-      if (accountsData) {
-        setAccounts(accountsData);
-      }
-
-      // Fetch categories
-      const { data: categoriesData } = await supabase
-        .from('category_view')
-        .select('*')
-        .eq('port_id', portfolioId);
-
-      if (categoriesData) {
-        setCategoryView(categoriesData);
-      }
-    }
-
-    fetchData();
+    fetchAccountsAndCategories();
   }, [portfolioId]);
 
   const handleTransactionClick = (transaction: Transaction) => {
@@ -155,6 +157,10 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
   const handleModalClose = () => {
     setIsModalOpen(false);
     setEditingTransaction(undefined);
+  };
+
+  const handleTransactionUpdate = async () => {
+    await Promise.all([fetchTransactions(), fetchAccountsAndCategories()]);
   };
 
   const handlePreviousMonth = () => {
@@ -322,6 +328,7 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
         categoryView={categoryView}
         portId={portfolioId}
         editingTransaction={editingTransaction}
+        onTransactionChange={handleTransactionUpdate}
       />
     </div>
   );

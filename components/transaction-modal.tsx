@@ -63,11 +63,16 @@ const transactionSchema = z.object({
   category: z.string().optional(),
   account: z.string().min(1, 'Account is required'),
   to: z.string().optional(),
-  note: z.string().max(100, 'Note must be less than 100 characters').optional(),
+  note: z
+    .string()
+    .max(100, 'Note must be less than 100 characters')
+    .optional()
+    .or(z.literal('')),
   description: z
     .string()
     .max(500, 'Description must be less than 500 characters')
-    .optional(),
+    .optional()
+    .or(z.literal('')),
 });
 
 interface TransactionModalProps {
@@ -77,6 +82,7 @@ interface TransactionModalProps {
   categoryView: CategoryView[];
   portId: string;
   editingTransaction?: Transaction;
+  onTransactionChange?: () => Promise<void>;
 }
 
 export function TransactionModal({
@@ -86,6 +92,7 @@ export function TransactionModal({
   categoryView,
   portId,
   editingTransaction,
+  onTransactionChange,
 }: TransactionModalProps) {
   const supabase = createClient();
   const [selectedType, setSelectedType] = useState<
@@ -170,6 +177,15 @@ export function TransactionModal({
         result = createResult;
       }
 
+      // Call the onTransactionChange callback if provided
+      if (onTransactionChange) {
+        await onTransactionChange();
+      }
+
+      // Close modal and reset form on success
+      onOpenChange(false);
+      form.reset();
+
       toast({
         title: 'Success',
         description: editingTransaction
@@ -178,11 +194,6 @@ export function TransactionModal({
             ? 'Transfer has been created successfully'
             : `${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} transaction has been created successfully`,
       });
-
-      // Close modal and reset form on success
-      onOpenChange(false);
-      form.reset();
-      router.refresh();
     } catch (error) {
       console.error('Error with transaction:', error);
       toast({
