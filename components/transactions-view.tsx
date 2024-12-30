@@ -18,14 +18,7 @@ interface Transaction {
     account_name: string;
     account_description: string;
   };
-  category: {
-    category_id: string;
-    category_name: string;
-    category_type: string;
-    parent_category_id: string;
-    parent_category_name: string;
-    category_path: string;
-  };
+  category: string;
   portfolio: {
     portfolio_id: string;
     portfolio_title: string;
@@ -245,7 +238,7 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
                           {transaction.note}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {transaction.category.category_path} •{' '}
+                          {transaction.category} •{' '}
                           {transaction.account.account_name}
                           {transaction.description && (
                             <span className="ml-1">

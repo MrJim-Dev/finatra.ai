@@ -33,6 +33,20 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
+import type { Account, Category, CategoryView, Option } from '@/types';
+
+const transactionSchema = z.object({
+  date: z.string().default(() => new Date().toISOString().split('T')[0]),
+  amount: z.string().min(1, 'Amount is required'),
+  category: z.string().optional(),
+  account: z.string().min(1, 'Account is required'),
+  to: z.string().optional(),
+  note: z.string().max(100, 'Note must be less than 100 characters').optional(),
+  description: z
+    .string()
+    .max(500, 'Description must be less than 500 characters')
+    .optional(),
+});
 
 interface TransactionModalProps {
   open: boolean;
@@ -56,35 +70,6 @@ export function TransactionModal({
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const transactionSchema = z
-    .object({
-      date: z.string().default(() => new Date().toISOString().split('T')[0]),
-      amount: z.string().min(1, 'Amount is required'),
-      category: z.string().min(1, 'Category is required'),
-      account: z.string().min(1, 'Account is required'),
-      to: z.string().optional(),
-      note: z
-        .string()
-        .max(100, 'Note must be less than 100 characters')
-        .optional(),
-      description: z
-        .string()
-        .max(500, 'Description must be less than 500 characters')
-        .optional(),
-    })
-    .refine(
-      (data) => {
-        if (selectedType === 'transfer') {
-          return !!data.to;
-        }
-        return true;
-      },
-      {
-        message: 'Destination account is required for transfers',
-        path: ['to'],
-      }
-    );
 
   const form = useForm<z.infer<typeof transactionSchema>>({
     resolver: zodResolver(transactionSchema),
@@ -114,45 +99,26 @@ export function TransactionModal({
         description: description || null,
         port_id: portId,
         transaction_type: selectedType,
+        category: selectedType === 'transfer' ? 'Transfer' : category,
+        account_id: account,
+        to_account_id: selectedType === 'transfer' ? to : null,
       };
 
-      if (selectedType === 'transfer') {
-        const { data: result, error } = await supabase
-          .from('transactions')
-          .insert({
-            ...transactionData,
-            account_id: account,
-            to_account_id: to,
-            category: null,
-          })
-          .select()
-          .single();
+      const { data: result, error } = await supabase
+        .from('transactions')
+        .insert(transactionData)
+        .select()
+        .single();
 
-        if (error) throw error;
+      if (error) throw error;
 
-        toast({
-          title: 'Success',
-          description: 'Transfer has been created successfully',
-        });
-      } else {
-        const { data: result, error } = await supabase
-          .from('transactions')
-          .insert({
-            ...transactionData,
-            account_id: account,
-            category: category,
-            to_account_id: null,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        toast({
-          title: 'Success',
-          description: `${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} transaction has been created successfully`,
-        });
-      }
+      toast({
+        title: 'Success',
+        description:
+          selectedType === 'transfer'
+            ? 'Transfer has been created successfully'
+            : `${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} transaction has been created successfully`,
+      });
 
       // Close modal and reset form on success
       onOpenChange(false);
@@ -247,16 +213,19 @@ function TransactionForm({
   accounts: Account[];
   categories: Category[];
 }) {
-  // Transform categories into the format expected by MultiLevelSelect
-  const transformCategories = (cats: Category[]): Option[] => {
-    return cats.map((cat) => ({
-      label: cat.name,
-      value: cat.id.toString(), // Convert id to string
-      children:
-        cat.subcategories && cat.subcategories.length > 0
-          ? transformCategories(cat.subcategories)
-          : undefined,
-    }));
+  // Transform categories to create path-based values
+  const transformCategories = (cats: Category[], parentPath = ''): Option[] => {
+    return cats.map((cat) => {
+      const currentPath = parentPath ? `${parentPath}/${cat.name}` : cat.name;
+      return {
+        label: cat.name,
+        value: currentPath, // Use the full path as the value
+        children:
+          cat.subcategories && cat.subcategories.length > 0
+            ? transformCategories(cat.subcategories, currentPath)
+            : undefined,
+      };
+    });
   };
 
   const categoryOptions = transformCategories(categories);
@@ -509,15 +478,55 @@ function TransferForm({
         )}
       />
 
-      <div className="space-y-2">
-        <Label htmlFor="transfer-note">Note</Label>
-        <Input id="transfer-note" placeholder="Add a note" />
-      </div>
+      <FormField
+        control={form.control}
+        name="note"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Note</FormLabel>
+            <FormControl>
+              <Input
+                placeholder="Add a note (optional)"
+                {...field}
+                onChange={(e) => {
+                  if (e.target.value.length <= 100) {
+                    field.onChange(e);
+                  }
+                }}
+              />
+            </FormControl>
+            <FormDescription>
+              {field.value?.length || 0}/100 characters
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="transfer-description">Description</Label>
-        <Textarea id="transfer-description" placeholder="Add a description" />
-      </div>
+      <FormField
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Description</FormLabel>
+            <FormControl>
+              <Textarea
+                placeholder="Add a description (optional)"
+                {...field}
+                onChange={(e) => {
+                  if (e.target.value.length <= 500) {
+                    field.onChange(e);
+                  }
+                }}
+              />
+            </FormControl>
+            <FormDescription>
+              {field.value?.length || 0}/500 characters
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 }
