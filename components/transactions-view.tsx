@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { TransactionModal } from '@/components/transaction-modal';
+import type { Account, CategoryView } from '@/types';
 
 interface Transaction {
   id: string;
@@ -36,6 +38,12 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [totalBalance, setTotalBalance] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<
+    Transaction | undefined
+  >();
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categoryView, setCategoryView] = useState<CategoryView[]>([]);
 
   // Group transactions by date
   const groupedTransactions = transactions.reduce(
@@ -109,6 +117,45 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
 
     fetchTransactions();
   }, [currentDate, portfolioId]);
+
+  // Fetch accounts and categories
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createClient();
+
+      // Fetch accounts
+      const { data: accountsData } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('port_id', portfolioId);
+
+      if (accountsData) {
+        setAccounts(accountsData);
+      }
+
+      // Fetch categories
+      const { data: categoriesData } = await supabase
+        .from('category_view')
+        .select('*')
+        .eq('port_id', portfolioId);
+
+      if (categoriesData) {
+        setCategoryView(categoriesData);
+      }
+    }
+
+    fetchData();
+  }, [portfolioId]);
+
+  const handleTransactionClick = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setEditingTransaction(undefined);
+  };
 
   const handlePreviousMonth = () => {
     setCurrentDate(
@@ -231,7 +278,8 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
                   {dayTransactions.map((transaction) => (
                     <div
                       key={transaction.id}
-                      className="flex items-center justify-between py-2 px-4 bg-card rounded-lg hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between py-2 px-4 bg-card rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => handleTransactionClick(transaction)}
                     >
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">
@@ -265,6 +313,16 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
             );
           })}
       </div>
+
+      {/* Transaction Modal */}
+      <TransactionModal
+        open={isModalOpen}
+        onOpenChange={handleModalClose}
+        accounts={accounts}
+        categoryView={categoryView}
+        portId={portfolioId}
+        editingTransaction={editingTransaction}
+      />
     </div>
   );
 }

@@ -29,11 +29,33 @@ import * as z from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from './ui/button';
 import MultiLevelSelect from '@/components/ui/custom/multi-level-select';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import type { Account, Category, CategoryView, Option } from '@/types';
+
+// Define Transaction type
+interface Transaction {
+  id: string;
+  transaction_id: string;
+  transaction_date: string;
+  amount: number;
+  transaction_type: 'income' | 'expense';
+  note: string;
+  description: string;
+  account: {
+    account_id: string;
+    account_name: string;
+    account_description: string;
+  };
+  category: string;
+  portfolio: {
+    portfolio_id: string;
+    portfolio_title: string;
+    portfolio_icon: string;
+  };
+}
 
 const transactionSchema = z.object({
   date: z.string().default(() => new Date().toISOString().split('T')[0]),
@@ -54,6 +76,7 @@ interface TransactionModalProps {
   accounts: Account[];
   categoryView: CategoryView[];
   portId: string;
+  editingTransaction?: Transaction;
 }
 
 export function TransactionModal({
@@ -62,11 +85,12 @@ export function TransactionModal({
   accounts,
   categoryView,
   portId,
+  editingTransaction,
 }: TransactionModalProps) {
   const supabase = createClient();
   const [selectedType, setSelectedType] = useState<
     'income' | 'expense' | 'transfer'
-  >('income');
+  >(editingTransaction?.transaction_type || 'income');
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,15 +98,33 @@ export function TransactionModal({
   const form = useForm<z.infer<typeof transactionSchema>>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
-      date: new Date().toISOString().split('T')[0],
-      amount: '',
-      category: '',
-      account: '',
+      date:
+        editingTransaction?.transaction_date.split('T')[0] ||
+        new Date().toISOString().split('T')[0],
+      amount: editingTransaction?.amount.toString() || '',
+      category: editingTransaction?.category || '',
+      account: editingTransaction?.account.account_id || '',
       to: '',
-      note: '',
-      description: '',
+      note: editingTransaction?.note || '',
+      description: editingTransaction?.description || '',
     },
   });
+
+  // Reset form when editingTransaction changes
+  useEffect(() => {
+    if (editingTransaction) {
+      form.reset({
+        date: editingTransaction.transaction_date.split('T')[0],
+        amount: editingTransaction.amount.toString(),
+        category: editingTransaction.category,
+        account: editingTransaction.account.account_id,
+        to: '',
+        note: editingTransaction.note,
+        description: editingTransaction.description,
+      });
+      setSelectedType(editingTransaction.transaction_type);
+    }
+  }, [editingTransaction, form]);
 
   const onSubmit = async (data: z.infer<typeof transactionSchema>) => {
     if (isSubmitting) return;
@@ -104,18 +146,35 @@ export function TransactionModal({
         to_account_id: selectedType === 'transfer' ? to : null,
       };
 
-      const { data: result, error } = await supabase
-        .from('transactions')
-        .insert(transactionData)
-        .select()
-        .single();
+      let result;
+      if (editingTransaction) {
+        // Update existing transaction
+        const { data: updateResult, error: updateError } = await supabase
+          .from('transactions')
+          .update(transactionData)
+          .eq('id', editingTransaction.id)
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (updateError) throw updateError;
+        result = updateResult;
+      } else {
+        // Create new transaction
+        const { data: createResult, error: createError } = await supabase
+          .from('transactions')
+          .insert(transactionData)
+          .select()
+          .single();
+
+        if (createError) throw createError;
+        result = createResult;
+      }
 
       toast({
         title: 'Success',
-        description:
-          selectedType === 'transfer'
+        description: editingTransaction
+          ? 'Transaction updated successfully'
+          : selectedType === 'transfer'
             ? 'Transfer has been created successfully'
             : `${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} transaction has been created successfully`,
       });
@@ -125,10 +184,10 @@ export function TransactionModal({
       form.reset();
       router.refresh();
     } catch (error) {
-      console.error('Error creating transaction:', error);
+      console.error('Error with transaction:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create transaction. Please try again.',
+        description: `Failed to ${editingTransaction ? 'update' : 'create'} transaction. Please try again.`,
         variant: 'destructive',
       });
     } finally {
@@ -148,13 +207,16 @@ export function TransactionModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>New Transaction</DialogTitle>
+          <DialogTitle>
+            {editingTransaction ? 'Edit Transaction' : 'New Transaction'}
+          </DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <Tabs
-              defaultValue="income"
+              value={selectedType}
+              defaultValue={selectedType}
               className="w-full"
               onValueChange={(value) =>
                 setSelectedType(value as typeof selectedType)
@@ -188,9 +250,13 @@ export function TransactionModal({
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <span className="mr-2">Creating...</span>
+                  <span className="mr-2">
+                    {editingTransaction ? 'Updating...' : 'Creating...'}
+                  </span>
                   {/* Optional: Add a loading spinner component here */}
                 </>
+              ) : editingTransaction ? (
+                'Update Transaction'
               ) : (
                 'Create Transaction'
               )}
@@ -219,7 +285,7 @@ function TransactionForm({
       const currentPath = parentPath ? `${parentPath}/${cat.name}` : cat.name;
       return {
         label: cat.name,
-        value: currentPath, // Use the full path as the value
+        value: currentPath,
         children:
           cat.subcategories && cat.subcategories.length > 0
             ? transformCategories(cat.subcategories, currentPath)
@@ -229,6 +295,18 @@ function TransactionForm({
   };
 
   const categoryOptions = transformCategories(categories);
+
+  // Get the current category value from the form
+  const categoryValue = form.watch('category');
+
+  // Update category selection when form loads with a value
+  useEffect(() => {
+    if (categoryValue) {
+      // The category value might be a path like "Parent/Child/Grandchild"
+      // We'll use it as is since our MultiLevelSelect now expects the full path
+      form.setValue('category', categoryValue);
+    }
+  }, [categoryValue, form]);
 
   return (
     <div className="space-y-4">
