@@ -104,7 +104,7 @@ export function SiteHeader({ user }: { user: User | null }) {
         <div className="container flex h-[3rem] items-center justify-between w-full">
           <Link className="text-md flex items-center" href="/">
             <img src="/logo.png" alt="Featurize" className="h-5 w-5 mr-2" />
-            Featurize
+            Finatra
           </Link>
           <NavMenu className="hidden md:flex " />
 
@@ -193,9 +193,8 @@ export function SiteHeader({ user }: { user: User | null }) {
                 className="border-grey-dark pl-6 py-0.5 border-b md:border-none"
               >
                 <Link
-                  className={`hover:text-grey flex h-[var(--navigation-height)] w-full items-center text-xl transition-[color,transform] duration-300 md:translate-y-0 md:text-sm md:transition-colors ${
-                    hamburgerMenuIsOpen ? '[&_a]:translate-y-0' : ''
-                  }`}
+                  className={`hover:text-grey flex h-[var(--navigation-height)] w-full items-center text-xl transition-[color,transform] duration-300 md:translate-y-0 md:text-sm md:transition-colors ${hamburgerMenuIsOpen ? '[&_a]:translate-y-0' : ''
+                    }`}
                   href={item.href}
                 >
                   {item.label}
