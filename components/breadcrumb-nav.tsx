@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { usePathname } from 'next/navigation';
 import {
   Breadcrumb,
@@ -27,8 +28,8 @@ export function BreadcrumbNav() {
     <Breadcrumb>
       <BreadcrumbList>
         {breadcrumbs.map((breadcrumb, index) => (
-          <>
-            <BreadcrumbItem key={breadcrumb.href}>
+          <React.Fragment key={breadcrumb.href}>
+            <BreadcrumbItem>
               {index === breadcrumbs.length - 1 ? (
                 <BreadcrumbPage>{breadcrumb.label}</BreadcrumbPage>
               ) : (
@@ -38,7 +39,7 @@ export function BreadcrumbNav() {
               )}
             </BreadcrumbItem>
             {index < breadcrumbs.length - 1 && <BreadcrumbSeparator />}
-          </>
+          </React.Fragment>
         ))}
       </BreadcrumbList>
     </Breadcrumb>

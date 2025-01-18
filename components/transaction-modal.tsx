@@ -1,3 +1,5 @@
+'use client';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
@@ -83,6 +85,15 @@ interface TransactionModalProps {
   portId: string;
   editingTransaction?: Transaction;
   onTransactionChange?: () => Promise<void>;
+  defaultType?: 'income' | 'expense' | 'transfer';
+  defaultValues?: {
+    amount: number;
+    category?: string;
+    account?: string;
+    to_account?: string;
+    note?: string;
+    description?: string;
+  };
 }
 
 export function TransactionModal({
@@ -93,11 +104,13 @@ export function TransactionModal({
   portId,
   editingTransaction,
   onTransactionChange,
+  defaultType,
+  defaultValues,
 }: TransactionModalProps) {
   const supabase = createClient();
   const [selectedType, setSelectedType] = useState<
     'income' | 'expense' | 'transfer'
-  >(editingTransaction?.transaction_type || 'income');
+  >(defaultType || editingTransaction?.transaction_type || 'income');
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,16 +121,21 @@ export function TransactionModal({
       date:
         editingTransaction?.transaction_date.split('T')[0] ||
         new Date().toISOString().split('T')[0],
-      amount: editingTransaction?.amount.toString() || '',
-      category: editingTransaction?.category || '',
-      account: editingTransaction?.account.account_id || '',
-      to: '',
-      note: editingTransaction?.note || '',
-      description: editingTransaction?.description || '',
+      amount:
+        defaultValues?.amount?.toString() ||
+        editingTransaction?.amount.toString() ||
+        '',
+      category: defaultValues?.category || editingTransaction?.category || '',
+      account:
+        defaultValues?.account || editingTransaction?.account.account_id || '',
+      to: defaultValues?.to_account || '',
+      note: defaultValues?.note || editingTransaction?.note || '',
+      description:
+        defaultValues?.description || editingTransaction?.description || '',
     },
   });
 
-  // Reset form when editingTransaction changes
+  // Reset form when editingTransaction or defaultValues changes
   useEffect(() => {
     if (editingTransaction) {
       form.reset({
@@ -130,8 +148,21 @@ export function TransactionModal({
         description: editingTransaction.description,
       });
       setSelectedType(editingTransaction.transaction_type);
+    } else if (defaultValues) {
+      form.reset({
+        date: new Date().toISOString().split('T')[0],
+        amount: defaultValues.amount.toString(),
+        category: defaultValues.category || '',
+        account: defaultValues.account || '',
+        to: defaultValues.to_account || '',
+        note: defaultValues.note || '',
+        description: defaultValues.description || '',
+      });
+      if (defaultType) {
+        setSelectedType(defaultType);
+      }
     }
-  }, [editingTransaction, form]);
+  }, [editingTransaction, defaultValues, defaultType, form]);
 
   const onSubmit = async (data: z.infer<typeof transactionSchema>) => {
     if (isSubmitting) return;

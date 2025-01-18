@@ -17,6 +17,7 @@ import { RightSidebarToggle } from '@/components/right-sidebar-toggle';
 import { getRightSidebarState } from '@/lib/actions/sidebar';
 import { AIChatButton } from '@/components/ai-chat-button';
 import { AIChatInterface } from '@/components/ai-chat-interface';
+import { RightSidebarProvider } from '@/lib/context/sidebar-context';
 
 interface LayoutProps {
   children: ReactNode;
@@ -38,33 +39,35 @@ const Layout = async ({ children }: LayoutProps) => {
 
   return (
     <SidebarProvider>
-      <AppSidebar user={currentUser} portfolio={portfolio as Portfolio[]} />
-      <SidebarInset>
-        <div className="flex h-full">
-          <div className="flex-1 flex flex-col">
-            <header className="flex h-16 shrink-0 items-center gap-2 justify-between">
-              <div className="flex items-center gap-2 px-4">
-                <SidebarTrigger className="-ml-1" />
-                <Separator orientation="vertical" className="mr-2 h-4" />
-                <BreadcrumbNav />
-              </div>
-            </header>
-
-            <div className="flex-1 relative overflow-y-auto">
-              <div className="min-h-full">{children}</div>
-
-              {!isRightSidebarOpen && (
-                <div className="fixed bottom-6 right-6 flex gap-2 z-50">
-                  <AIChatButton />
-                  <FloatingActionButton />
+      <RightSidebarProvider>
+        <AppSidebar user={currentUser} portfolio={portfolio as Portfolio[]} />
+        <SidebarInset>
+          <div className="flex h-full">
+            <div className="flex-1 flex flex-col">
+              <header className="flex h-16 shrink-0 items-center gap-2 justify-between">
+                <div className="flex items-center gap-2 px-4">
+                  <SidebarTrigger className="-ml-1" />
+                  <Separator orientation="vertical" className="mr-2 h-4" />
+                  <BreadcrumbNav />
                 </div>
-              )}
-            </div>
-          </div>
+              </header>
 
-          <AIChatInterface />
-        </div>
-      </SidebarInset>
+              <div className="flex-1 relative overflow-y-auto">
+                <div className="min-h-full">{children}</div>
+
+                {!isRightSidebarOpen && (
+                  <div className="fixed bottom-6 right-6 flex gap-2 z-50">
+                    <AIChatButton />
+                    <FloatingActionButton />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <AIChatInterface />
+          </div>
+        </SidebarInset>
+      </RightSidebarProvider>
     </SidebarProvider>
   );
 };
