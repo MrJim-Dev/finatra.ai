@@ -11,6 +11,8 @@ import { NewAccountButton } from '@/components/new-account-button';
 import { createClient } from '@/lib/supabase/server';
 import { getPortfolioBySlug } from '@/lib/portfolio';
 import { CategoryList } from '@/components/category-list';
+import { getUser } from '@/lib/supabase/server';
+import { redirect } from 'next/navigation';
 
 // Updated types for categories
 type Category = {
@@ -28,6 +30,11 @@ type CategoryGroup = {
 };
 
 export default async function Page({ params }: { params: { slug: string } }) {
+  const { user } = await getUser();
+  if (!user) {
+    redirect('/signin');
+  }
+
   const supabase = await createClient();
   const portfolio = await getPortfolioBySlug(params.slug);
 

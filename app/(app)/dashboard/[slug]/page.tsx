@@ -2,6 +2,7 @@ import { TransactionsView } from '@/components/transactions-view';
 import { getPortfolioBySlug } from '@/lib/portfolio';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { getUser } from '@/lib/supabase/server';
 
 // Helper function to validate and get date from searchParams
 function getDateFromParams(searchParams: { month?: string; year?: string }) {
@@ -45,6 +46,11 @@ export default async function Page({
   params: { slug: string };
   searchParams: { month?: string; year?: string };
 }) {
+  const { user } = await getUser();
+  if (!user) {
+    redirect('/signin');
+  }
+
   const portfolio = await getPortfolioBySlug(params.slug);
   if (!portfolio) return null;
 

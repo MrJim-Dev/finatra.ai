@@ -1,8 +1,8 @@
 import { createClient } from "./supabase/server";
 import { ProjectTypes } from "./types/project";
 
-export function getPublicUrl(bucket: string, path: string): string | null {
-  const supabase = createClient();
+export async function getPublicUrl(bucket: string, path: string): Promise<string | null> {
+  const supabase = await createClient();
   const { data } = supabase
     .storage
     .from(bucket)
@@ -16,7 +16,7 @@ export function getPublicUrl(bucket: string, path: string): string | null {
 }
 
 export async function getProjectBySlug(slug: string): Promise<ProjectTypes | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('projects')
     .select()
@@ -30,7 +30,7 @@ export async function getProjectBySlug(slug: string): Promise<ProjectTypes | nul
   if (data) {
     let icon_url = null;
     if (data.project_icon) {
-      icon_url = getPublicUrl('projects', data.project_icon);
+      icon_url = await getPublicUrl('projects', data.project_icon);
     }
 
     return { ...data, icon_url };
@@ -40,7 +40,7 @@ export async function getProjectBySlug(slug: string): Promise<ProjectTypes | nul
 }
 
 export async function getPublicProjects(): Promise<ProjectTypes[] | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   
 
   const { data, error } = await supabase
@@ -70,7 +70,7 @@ export async function getPublicProjects(): Promise<ProjectTypes[] | null> {
 }
 
 export async function getProjectsByUserId(userId: string): Promise<ProjectTypes[] | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("projects_view")
     .select()
@@ -99,7 +99,7 @@ export async function getProjectsByUserId(userId: string): Promise<ProjectTypes[
 
 
 export async function getFeaturesByProjectId(projectId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('features_view')
     .select()
@@ -110,8 +110,8 @@ export async function getFeaturesByProjectId(projectId: string) {
     return data;
   }
 
-  const projectsWithAvatars = await Promise.all(data.map(async (feature) => {
-    const avatar_url = getPublicUrl('profiles', feature.author.avatar || null); // Get avatar_url
+  const projectsWithAvatars = await Promise.all(data.map(async (feature: any) => {
+    const avatar_url = await getPublicUrl('profiles', feature.author.avatar || null); // Get avatar_url
     return { ...feature, author: { ...feature.author, avatar_url } }; // Append avatar_url to author
   }));
 
@@ -119,7 +119,7 @@ export async function getFeaturesByProjectId(projectId: string) {
 }
 
 export async function getFeatureByProjectSlug(project_id: string, featureSlug: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('features_view')
     .select()
@@ -131,12 +131,12 @@ export async function getFeatureByProjectSlug(project_id: string, featureSlug: s
     return data;
   }
 
-  const avatar_url = getPublicUrl('profiles', data.author.avatar || null); // Get avatar_url
+  const avatar_url = await getPublicUrl('profiles', data.author.avatar || null); // Get avatar_url
   return { ...data, author: { ...data.author, avatar_url } }; // Append avatar_url to author
 }
 
 export async function getUpdatedVotesPerFeature(requestId: string, userId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const {data, error} = await supabase.from("votes").select().eq("request_id", requestId).eq("user_id", userId)
 
   if(error) return
@@ -145,7 +145,7 @@ export async function getUpdatedVotesPerFeature(requestId: string, userId: strin
 }
 
 export async function getFeatureComments(featureId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   let { data: feature_comments_view, error } = await supabase
     .from('feature_comments_view')
     .select('*')
@@ -160,8 +160,8 @@ export async function getFeatureComments(featureId: string) {
     return null;
   }
 
-  const commentsWithAvatars = await Promise.all(feature_comments_view.map(async (comment) => {
-    const avatar_url = getPublicUrl('profiles', comment.author_details.avatar || null); 
+  const commentsWithAvatars = await Promise.all(feature_comments_view.map(async (comment: any) => {
+    const avatar_url = await getPublicUrl('profiles', comment.author_details.avatar || null); 
     return { ...comment, author_details: { ...comment.author_details, avatar_url } }; 
   }));
 
@@ -169,7 +169,7 @@ export async function getFeatureComments(featureId: string) {
 }
 
 export async function getBookmarkedProjects(userId: string): Promise<ProjectTypes[] | null> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("bookmarks")
     .select("project_id")
@@ -181,7 +181,7 @@ export async function getBookmarkedProjects(userId: string): Promise<ProjectType
   }
 
   if (data && data.length > 0) {
-    const projectIds = data.map(bookmark => bookmark.project_id);
+    const projectIds = data.map((bookmark: any) => bookmark.project_id);
     const { data: projects, error: projectsError } = await supabase
       .from("projects")
       .select()
@@ -193,7 +193,7 @@ export async function getBookmarkedProjects(userId: string): Promise<ProjectType
       return null;
     }
 
-    const projectsWithIcons = await Promise.all(projects.map(async (project) => {
+    const projectsWithIcons = await Promise.all(projects.map(async (project: any) => {
       let icon_url = null;
       if (project.project_icon) {
         icon_url = await getPublicUrl('projects', project.project_icon);
