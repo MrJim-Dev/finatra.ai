@@ -17,10 +17,7 @@ import {
 import { NavMain } from '@/components/nav-main';
 import { NavProjects } from '@/components/nav-projects';
 import { NavUser } from '@/components/nav-user';
-import {
-  PortfolioSwitcher,
-  TeamSwitcher,
-} from '@/components/portfolio-switcher';
+import { PortfolioSwitcher } from '@/components/portfolio-switcher';
 import {
   Sidebar,
   SidebarContent,
@@ -30,6 +27,7 @@ import {
 } from '@/components/ui/sidebar';
 import { UserData } from '@/lib/types/user';
 import { Portfolio } from '@/lib/types/portfolio';
+import { useParams } from 'next/navigation';
 
 // This is sample data.
 const data = {
@@ -165,13 +163,16 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ user, portfolio, ...props }: AppSidebarProps) {
+  const params = useParams() as { slug?: string };
+  const effectiveSlug = params?.slug || (portfolio?.[0]?.slug ?? '');
+  const prefix = effectiveSlug ? `/dashboard/${effectiveSlug}` : '/dashboard';
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <PortfolioSwitcher portfolios={portfolio} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={data.navMain} prefix={prefix} />
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>

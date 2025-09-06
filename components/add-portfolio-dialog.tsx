@@ -1,32 +1,16 @@
-import * as React from 'react';
+﻿import * as React from 'react';
 import { z } from 'zod';
-import { nanoid } from 'nanoid';
 import { useToast } from '@/components/ui/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { PortfolioIconPicker } from './ui/portfolio-icon-picker';
-import { createClient } from '@/lib/supabase/client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { FormMessage } from '@/components/ui/form';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel } from '@/components/ui/form';
 import { useRouter } from 'next/navigation';
-
-const supabase = createClient();
+import { createPortfolio } from '@/lib/api/finance';
 
 interface AddPortfolioDialogProps {
   open: boolean;
@@ -35,26 +19,14 @@ interface AddPortfolioDialogProps {
 
 const portfolioSchema = z.object({
   title: z.string().min(1, 'Portfolio title is required'),
-  icon: z
-    .object({
-      type: z.enum(['icon', 'emoji']),
-      value: z.string().min(1, 'Please select an icon'),
-    })
-    .refine((data) => data.value !== '', {
-      message: 'Please select an icon',
-      path: ['value'],
-    }),
+  icon: z.object({ type: z.enum(['icon', 'emoji']), value: z.string().min(1, 'Please select an icon') }),
   color: z.string().min(1, 'Please select a color'),
 });
 
 type PortfolioFormValues = z.infer<typeof portfolioSchema>;
 
-export function AddPortfolioDialog({
-  open,
-  onOpenChange,
-}: AddPortfolioDialogProps) {
+export function AddPortfolioDialog({ open, onOpenChange }: AddPortfolioDialogProps) {
   const { toast } = useToast();
-
   const router = useRouter();
 
   const form = useForm<PortfolioFormValues>({
@@ -66,69 +38,18 @@ export function AddPortfolioDialog({
     },
   });
 
-  const generateUniqueSlug = async (baseSlug: string): Promise<string> => {
-    const slug = baseSlug
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
-
-    const { data: existing } = await supabase
-      .from('portfolio')
-      .select('slug')
-      .eq('slug', slug)
-      .single();
-
-    if (!existing) return slug;
-    return `${slug}-${nanoid(6)}`;
-  };
-
   const onSubmit = async (data: PortfolioFormValues) => {
     try {
-      // Generate unique slug
-      const slug = await generateUniqueSlug(data.title);
+      await createPortfolio({ title: data.title, icon: data.icon, color: data.color });
 
-      // Get current user
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      // Check if slug exists again (double-check for race conditions)
-      const { data: existingSlug } = await supabase
-        .from('portfolio')
-        .select('slug')
-        .eq('slug', slug)
-        .single();
-
-      // If slug exists, generate a new one with random characters
-      const finalSlug = existingSlug ? `${slug}-${nanoid(6)}` : slug;
-
-      // Insert portfolio
-      const { error } = await supabase.from('portfolio').insert({
-        user_id: user.id,
-        title: data.title,
-        icon: data.icon,
-        color: data.color,
-        slug: finalSlug,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Portfolio created successfully',
-      });
-
+      toast({ title: 'Success', description: 'Portfolio created successfully' });
       onOpenChange(false);
-
       router.refresh();
       form.reset();
     } catch (error) {
-      console.log(error);
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to create portfolio',
+        description: error instanceof Error ? error.message : 'Failed to create portfolio',
         variant: 'destructive',
       });
     }
@@ -147,32 +68,19 @@ export function AddPortfolioDialog({
                 <FormField
                   control={form.control}
                   name="icon"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem className="flex flex-col items-center">
                       <FormControl>
                         <PortfolioIconPicker
                           icon={form.watch('icon')}
                           color={form.watch('color')}
-                          onIconChange={(icon) =>
-                            form.setValue('icon', icon, {
-                              shouldValidate: true,
-                            })
-                          }
-                          onColorChange={(color) =>
-                            form.setValue('color', color, {
-                              shouldValidate: true,
-                            })
-                          }
+                          onIconChange={(icon) => form.setValue('icon', icon, { shouldValidate: true })}
+                          onColorChange={(color) => form.setValue('color', color, { shouldValidate: true })}
                         />
                       </FormControl>
-                      <span className="text-sm text-muted-foreground">
-                        Choose an icon and color
-                      </span>
+                      <span className="text-sm text-muted-foreground">Choose an icon and color</span>
                       {form.formState.errors.icon && (
-                        <FormMessage>
-                          {form.formState.errors.icon.value?.message ||
-                            'Please select an icon'}
-                        </FormMessage>
+                        <FormMessage>{form.formState.errors.icon.value?.message || 'Please select an icon'}</FormMessage>
                       )}
                     </FormItem>
                   )}
@@ -181,12 +89,10 @@ export function AddPortfolioDialog({
                 <FormField
                   control={form.control}
                   name="color"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
                       {form.formState.errors.color && (
-                        <FormMessage>
-                          {form.formState.errors.color.message}
-                        </FormMessage>
+                        <FormMessage>{form.formState.errors.color.message}</FormMessage>
                       )}
                     </FormItem>
                   )}
@@ -209,17 +115,11 @@ export function AddPortfolioDialog({
             </div>
 
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting
-                  ? 'Creating...'
-                  : 'Create Portfolio'}
+                {form.formState.isSubmitting ? 'Creating...' : 'Create Portfolio'}
               </Button>
             </DialogFooter>
           </form>

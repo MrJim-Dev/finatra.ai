@@ -1,7 +1,7 @@
-import { SiteBanner } from '@/components/site-banner';
+﻿import { SiteBanner } from '@/components/site-banner';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
-import { getUser } from '@/lib/supabase/server';
+import { getCurrentUserServer } from '@/lib/session';
 
 interface MarketingLayoutProps {
   children: React.ReactNode;
@@ -10,7 +10,7 @@ interface MarketingLayoutProps {
 export default async function MarketingLayout({
   children,
 }: MarketingLayoutProps) {
-  const { user } = await getUser(); // Fetch user data here
+  const user = await getCurrentUserServer(); // Fetch user data here
 
   return (
     <>
@@ -22,3 +22,4 @@ export default async function MarketingLayout({
     </>
   );
 }
+

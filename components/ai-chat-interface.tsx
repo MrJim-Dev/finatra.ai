@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
@@ -7,7 +7,10 @@ import { ScrollArea } from './ui/scroll-area';
 import { X } from 'lucide-react';
 import { TransactionModal } from './transaction-modal';
 import { useToast } from './ui/use-toast';
-import { createClient } from '@/lib/supabase/client';
+import {
+  getAccountsByPortfolioAuthenticated,
+  getCategoryHierarchyAuthenticated,
+} from '@/lib/api/auth-proxy';
 import { usePathname } from 'next/navigation';
 import { Message } from 'ai';
 import { useChat } from 'ai/react';
@@ -33,7 +36,6 @@ export function AIChatInterface() {
   const { toast } = useToast();
   const pathname = usePathname();
   const slug = pathname?.split('/').filter(Boolean)[1] || '';
-  const supabase = createClient();
 
   const { messages, input, handleInputChange, handleSubmit, setMessages } =
     useChat({
@@ -100,28 +102,27 @@ export function AIChatInterface() {
   useEffect(() => {
     const fetchAccounts = async () => {
       if (!portId) return;
-
-      const { data: accountsData } = await supabase
-        .from('accounts')
-        .select('*')
-        .eq('port_id', portId);
-
-      if (accountsData) {
-        setAccounts(accountsData);
+      const accountsRes = await getAccountsByPortfolioAuthenticated(portId);
+      const { data } = accountsRes as any;
+      if (data) {
+        setAccounts(data as any);
       }
-
-      const { data: categoriesData } = await supabase
-        .from('category_view')
-        .select('*')
-        .eq('port_id', portId);
-
-      if (categoriesData) {
-        setCategoryView(categoriesData);
-      }
+      const [income, expense] = await Promise.all([
+        getCategoryHierarchyAuthenticated(portId, 'income'),
+        getCategoryHierarchyAuthenticated(portId, 'expense'),
+      ]);
+      setCategoryView([
+        { type: 'income', port_id: portId, categories: (income as any) || [] },
+        {
+          type: 'expense',
+          port_id: portId,
+          categories: (expense as any) || [],
+        },
+      ] as any);
     };
 
     fetchAccounts();
-  }, [portId, supabase]);
+  }, [portId]);
 
   const handleTransactionComplete = async () => {
     setIsTransactionModalOpen(false);
@@ -169,7 +170,7 @@ export function AIChatInterface() {
                     remarkPlugins={[remarkGfm]}
                     className="prose prose-sm dark:prose-invert prose-p:leading-relaxed prose-pre:p-0"
                     components={{
-                      p: ({ children }) => (
+                      p: ({ children }: any) => (
                         <p className="mb-2 last:mb-0">{children}</p>
                       ),
                       code: ({
@@ -178,7 +179,7 @@ export function AIChatInterface() {
                         className,
                         children,
                         ...props
-                      }) => {
+                      }: any) => {
                         if (inline) {
                           return (
                             <code

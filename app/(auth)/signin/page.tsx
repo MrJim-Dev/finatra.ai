@@ -1,6 +1,6 @@
-import { SignInForm } from '@/components/signin-form';
+﻿import { SignInForm } from '@/components/signin-form';
 import { buttonVariants } from '@/components/ui/button';
-import { getUser } from '@/lib/supabase/server';
+import { getCurrentUserServer } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { ChevronLeft } from 'lucide-react';
 import { Metadata } from 'next';
@@ -13,10 +13,11 @@ export const metadata: Metadata = {
 };
 
 export default async function LoginPage() {
-  const { user } = await getUser();
+  const user = await getCurrentUserServer();
 
   if (user) {
-    return redirect('/dashboard');
+    // console.log(user);
+    // return redirect('/dashboard');
   }
 
   return (

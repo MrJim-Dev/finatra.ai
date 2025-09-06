@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { signOut } from '@/lib/auth';
+import { signOut } from '@/lib/auth-client';
 import { UserData } from '@/lib/types/user';
 import { useRouter } from 'next/navigation';
 

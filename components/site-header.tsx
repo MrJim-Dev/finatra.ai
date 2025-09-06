@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -7,8 +7,6 @@ import { AlignJustify, XIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { NavMenu } from './nav-menu';
-import { getUser } from '@/lib/supabase/client';
-import { User } from '@supabase/supabase-js';
 
 const menuItem = [
   {
@@ -207,3 +205,4 @@ export function SiteHeader({ user }: { user: User | null }) {
     </>
   );
 }
+

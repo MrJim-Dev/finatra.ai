@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { createClient } from '@/lib/supabase/client';
+import { createCategory, updateCategory, deleteCategory } from '@/lib/api/finance';
 import { useParams, useRouter } from 'next/navigation';
 import { getPortfolioBySlug } from '@/lib/portfolio';
 import { CategoryDialog } from './category-dialog';
@@ -62,7 +62,7 @@ export function CategoryList({ categoryViewData }: CategoryListProps) {
     id: number;
     name: string;
   } | null>(null);
-  const supabase = createClient();
+  
   const params = useParams();
   const router = useRouter();
   const [portfolio, setPortfolio] = useState<any>(null);
@@ -91,14 +91,9 @@ export function CategoryList({ categoryViewData }: CategoryListProps) {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteClick = async (categoryId: number) => {
+    const handleDeleteClick = async (categoryId: number) => {
     try {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', categoryId);
-
-      if (error) throw error;
+      await deleteCategory(categoryId);
       router.refresh();
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -109,20 +104,12 @@ export function CategoryList({ categoryViewData }: CategoryListProps) {
     try {
       if (editingCategory) {
         // Update existing category
-        const { error } = await supabase
-          .from('categories')
-          .update({ name: values.name })
-          .eq('id', editingCategory.id);
-        if (error) throw error;
+        await updateCategory(editingCategory.id, { name: values.name });
+        
       } else {
         // Create new category
-        const { error } = await supabase.from('categories').insert({
-          name: values.name,
-          parent_id: selectedParentId,
-          port_id: portfolio?.port_id,
-          type: selectedType,
-        });
-        if (error) throw error;
+        await createCategory({ name: values.name, parent_id: selectedParentId, port_id: portfolio?.port_id, type: selectedType });
+        
       }
 
       router.refresh();
@@ -170,3 +157,6 @@ export function CategoryList({ categoryViewData }: CategoryListProps) {
     </div>
   );
 }
+
+
+

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -14,8 +14,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { getPortfolioBySlug } from '@/lib/portfolio';
-import { createClient } from '@/lib/supabase/client';
+import { getPortfolioBySlug, getActivePortfolioClient } from '@/lib/portfolio';
+import { getPortfoliosClient } from '@/lib/api/finance';
+import { createAccountGroupAuthenticated } from '@/lib/api/auth-proxy';
 import { useToast } from '@/components/ui/use-toast';
 import { useState } from 'react';
 
@@ -26,14 +27,14 @@ interface NewGroupFormProps {
 
 const formSchema = z.object({
   group_name: z.string().min(1, 'Group name is required'),
-  group_type: z.enum(['default', 'credit', 'debit']),
+  group_type: z.enum(['default', 'credit']),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
 export function NewGroupForm({ open, onOpenChange }: NewGroupFormProps) {
   const { slug } = useParams();
-  const supabase = createClient();
+
   const { toast } = useToast();
 
   const router = useRouter();
@@ -54,16 +55,41 @@ export function NewGroupForm({ open, onOpenChange }: NewGroupFormProps) {
 
     try {
       // Get port_id from slug
-      const portfolio = await getPortfolioBySlug(slug as string);
-      if (!portfolio) throw new Error('Portfolio not found');
+      console.log('[NewGroupForm] submit -> slug:', slug);
+      // Try cookie first for fast port_id resolution
+      const cached = getActivePortfolioClient();
+      console.log('[NewGroupForm] cookie portfolio:', cached);
+      let portId: string | undefined = cached?.port_id;
+      if (!portId) {
+        const portfolio = await getPortfolioBySlug(slug as string);
+        console.log('[NewGroupForm] resolved portfolio:', portfolio);
+        portId = portfolio?.port_id;
+      }
 
-      const { error } = await supabase.from('account_groups').insert({
+      if (!portId) {
+        // Fallback to first portfolio if slug is missing or not found
+        const list = await getPortfoliosClient();
+        console.log(
+          '[NewGroupForm] fallback portfolios length:',
+          list?.data?.length ?? 0
+        );
+        portId = (list?.data?.[0]?.port_id as string) || '';
+      }
+      if (!portId) {
+        console.error('[NewGroupForm] No portfolio found for group creation');
+        toast({
+          title: 'No portfolio',
+          description: 'Create a portfolio first to add groups.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      await createAccountGroupAuthenticated({
         group_name: values.group_name,
         group_type: values.group_type,
-        port_id: portfolio.port_id,
+        port_id: portId,
       });
-
-      if (error) throw error;
 
       toast({
         title: 'Success',
@@ -111,10 +137,7 @@ export function NewGroupForm({ open, onOpenChange }: NewGroupFormProps) {
             <RadioGroup
               defaultValue="default"
               onValueChange={(value) =>
-                form.setValue(
-                  'group_type',
-                  value as 'default' | 'credit' | 'debit'
-                )
+                form.setValue('group_type', value as 'default' | 'credit')
               }
             >
               <div className="flex items-center space-x-2">
@@ -124,10 +147,6 @@ export function NewGroupForm({ open, onOpenChange }: NewGroupFormProps) {
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="credit" id="credit" />
                 <Label htmlFor="credit">Account group for credit cards</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="debit" id="debit" />
-                <Label htmlFor="debit">Account group for debit cards</Label>
               </div>
             </RadioGroup>
           </div>

@@ -1,11 +1,15 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { TransactionModal } from '@/components/transaction-modal';
 import type { Account, CategoryView } from '@/types';
+import {
+  getTransactionsAuthenticated,
+  getAccountsByPortfolioAuthenticated,
+  getCategoryHierarchyAuthenticated,
+} from '@/lib/api/auth-proxy';
 
 interface Transaction {
   id: string;
@@ -45,12 +49,11 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categoryView, setCategoryView] = useState<CategoryView[]>([]);
 
-  // Group transactions by date
   const groupedTransactions = transactions.reduce(
     (groups, transaction) => {
       const date = transaction.transaction_date.split('T')[0];
       if (!groups[date]) {
-        groups[date] = [];
+        groups[date] = [] as Transaction[];
       }
       groups[date].push(transaction);
       return groups;
@@ -63,11 +66,7 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
     year: 'numeric',
   });
 
-  // Function to fetch transactions and update totals
   const fetchTransactions = async () => {
-    const supabase = createClient();
-
-    // Get current month's start and end dates
     const startOfMonth = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth(),
@@ -79,88 +78,95 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
       0
     );
 
-    // Update the select statement to use the view and include all fields
-    const { data: monthTransactions, error } = await supabase
-      .from('transactions_view')
-      .select('*')
-      .eq('port_id', portfolioId)
-      .gte('transaction_date', startOfMonth.toISOString())
-      .lte('transaction_date', endOfMonth.toISOString())
-      .order('transaction_date', { ascending: false });
+    try {
+      const res = await getTransactionsAuthenticated({
+        port_id: portfolioId,
+        date_from: startOfMonth.toISOString(),
+        date_to: endOfMonth.toISOString(),
+        limit: 500,
+      });
 
-    if (error) {
-      console.error('Error fetching transactions:', error);
-      return;
-    }
+      const monthTransactions = (res?.data || []).map(
+        (t: any) =>
+          ({
+            id: t.id,
+            transaction_id: t.transaction_id,
+            transaction_date: t.transaction_date,
+            amount: t.amount,
+            transaction_type: t.transaction_type,
+            note: t.note,
+            description: t.description,
+            account: {
+              account_id: t.account_id,
+              account_name: t.account_name || '',
+              account_description: '',
+            },
+            category: t.category,
+            portfolio: {
+              portfolio_id: t.port_id,
+              portfolio_title: '',
+              portfolio_icon: '',
+            },
+          }) as Transaction
+      );
 
-    // Update transactions and calculate totals
-    setTransactions(monthTransactions || []);
+      setTransactions(monthTransactions);
 
-    const income =
-      monthTransactions?.reduce(
+      const income = monthTransactions.reduce(
         (sum: number, t: Transaction) =>
           t.transaction_type === 'income' ? sum + Number(t.amount) : sum,
         0
-      ) || 0;
-
-    const expenses =
-      monthTransactions?.reduce(
+      );
+      const expenses = monthTransactions.reduce(
         (sum: number, t: Transaction) =>
           t.transaction_type === 'expense' ? sum + Number(t.amount) : sum,
         0
-      ) || 0;
-
-    setTotalIncome(income);
-    setTotalExpenses(expenses);
-    setTotalBalance(income - expenses);
+      );
+      setTotalIncome(income);
+      setTotalExpenses(expenses);
+      setTotalBalance(income - expenses);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    }
   };
 
-  // Function to fetch accounts and categories
   const fetchAccountsAndCategories = async () => {
-    const supabase = createClient();
+    try {
+      const { data: accountsData } =
+        await getAccountsByPortfolioAuthenticated(portfolioId);
+      if (accountsData) setAccounts(accountsData as any);
 
-    // Fetch accounts
-    const { data: accountsData } = await supabase
-      .from('accounts')
-      .select('*')
-      .eq('port_id', portfolioId);
+      const [incomeHierarchy, expenseHierarchy] = await Promise.all([
+        getCategoryHierarchyAuthenticated(portfolioId, 'income'),
+        getCategoryHierarchyAuthenticated(portfolioId, 'expense'),
+      ]);
 
-    if (accountsData) {
-      setAccounts(accountsData);
-    }
-
-    // Fetch categories
-    const { data: categoriesData } = await supabase
-      .from('category_view')
-      .select('*')
-      .eq('port_id', portfolioId);
-
-    if (categoriesData) {
-      setCategoryView(categoriesData);
+      const categoriesFormatted = [
+        {
+          type: 'income',
+          port_id: portfolioId,
+          categories: (incomeHierarchy as any) || [],
+        },
+        {
+          type: 'expense',
+          port_id: portfolioId,
+          categories: (expenseHierarchy as any) || [],
+        },
+      ];
+      setCategoryView(categoriesFormatted as any);
+    } catch (error) {
+      console.error('Error fetching accounts/categories:', error);
     }
   };
 
-  // Initial data fetch
   useEffect(() => {
     fetchTransactions();
-  }, [currentDate, portfolioId]);
-
-  useEffect(() => {
     fetchAccountsAndCategories();
-  }, [portfolioId]);
+  }, [currentDate, portfolioId]);
 
   const handleTransactionClick = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setIsModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setEditingTransaction(undefined);
-  };
-
-  const handleTransactionUpdate = async () => {
-    await Promise.all([fetchTransactions(), fetchAccountsAndCategories()]);
   };
 
   const handlePreviousMonth = () => {
@@ -177,7 +183,6 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      {/* Month Navigation */}
       <div className="flex items-center justify-between mb-4">
         <button
           onClick={handlePreviousMonth}
@@ -194,7 +199,6 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
         </button>
       </div>
 
-      {/* View Tabs - restored from old version */}
       <Tabs defaultValue="daily" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="daily">Daily</TabsTrigger>
@@ -205,7 +209,6 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
         </TabsList>
       </Tabs>
 
-      {/* Summary Totals - restored old styling */}
       <div className="flex justify-between py-3 px-4 bg-muted/30 rounded-lg">
         <div className="text-sm">
           <span className="text-muted-foreground">Income</span>
@@ -225,7 +228,6 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
         </div>
       </div>
 
-      {/* Transactions List */}
       <div className="space-y-6">
         {Object.entries(groupedTransactions)
           .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
@@ -247,7 +249,6 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
 
             return (
               <div key={date} className="space-y-2">
-                {/* Date Header */}
                 <div className="flex items-center justify-between px-4">
                   <div className="flex items-center gap-2">
                     <div className="text-2xl font-semibold">
@@ -279,7 +280,6 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
                   </div>
                 </div>
 
-                {/* Day's Transactions */}
                 <div className="space-y-1">
                   {dayTransactions.map((transaction) => (
                     <div
@@ -301,17 +301,12 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
                           )}
                         </span>
                       </div>
-                      <span
-                        className={`text-sm font-medium ${
-                          transaction.transaction_type === 'income'
-                            ? 'text-blue-500'
-                            : transaction.transaction_type === 'expense'
-                              ? 'text-red-500'
-                              : 'text-muted-foreground'
-                        }`}
+                      <div
+                        className={`text-sm font-medium ${transaction.transaction_type === 'expense' ? 'text-red-500' : 'text-blue-500'}`}
                       >
-                        $ {Number(transaction.amount).toFixed(2)}
-                      </span>
+                        {transaction.transaction_type === 'expense' ? '-' : '+'}{' '}
+                        ${Number(transaction.amount).toFixed(2)}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -320,15 +315,14 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
           })}
       </div>
 
-      {/* Transaction Modal */}
       <TransactionModal
         open={isModalOpen}
-        onOpenChange={handleModalClose}
+        onOpenChange={setIsModalOpen}
         accounts={accounts}
         categoryView={categoryView}
         portId={portfolioId}
         editingTransaction={editingTransaction}
-        onTransactionChange={handleTransactionUpdate}
+        onTransactionChange={fetchTransactions}
       />
     </div>
   );

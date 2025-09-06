@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -18,13 +18,17 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { getPortfolioBySlug } from '@/lib/portfolio';
-import { createClient } from '@/lib/supabase/client';
+import { getPortfolioBySlug, getActivePortfolioClient } from '@/lib/portfolio';
+import { getPortfoliosClient } from '@/lib/api/finance';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import * as z from 'zod';
+import {
+  getAccountGroupsByPortfolioAuthenticated,
+  createAccountAuthenticated,
+} from '@/lib/api/auth-proxy';
 
 interface NewAccountFormProps {
   open: boolean;
@@ -43,6 +47,8 @@ const formSchema = z.object({
     .string()
     .optional()
     .transform((val) => (val ? parseFloat(val) : 0)),
+  in_total: z.boolean().optional().default(true),
+  hidden: z.boolean().optional().default(false),
   description: z
     .string()
     .max(500, 'Description must be less than 500 characters')
@@ -53,7 +59,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
   const { slug } = useParams();
-  const supabase = createClient();
   const { toast } = useToast();
   const router = useRouter();
   const [accountGroups, setAccountGroups] = useState<AccountGroup[]>([]);
@@ -63,7 +68,9 @@ export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      amount: '',
+      amount: 0,
+      in_total: true,
+      hidden: false,
       description: '',
     },
   });
@@ -71,18 +78,27 @@ export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
   useEffect(() => {
     async function fetchAccountGroups() {
       try {
-        const portfolio = await getPortfolioBySlug(slug as string);
-        if (!portfolio) throw new Error('Portfolio not found');
+        console.log('[NewAccountForm] open -> slug:', slug);
+        const cached = getActivePortfolioClient();
+        console.log('[NewAccountForm] cookie portfolio:', cached);
+        let portId = cached?.port_id as string | undefined;
+        if (!portId) {
+          const portfolio = await getPortfolioBySlug(slug as string);
+          console.log('[NewAccountForm] resolved portfolio:', portfolio);
+          portId = portfolio?.port_id;
+        }
+        if (!portId) {
+          const list = await getPortfoliosClient();
+          console.log(
+            '[NewAccountForm] fallback portfolios length:',
+            list?.data?.length ?? 0
+          );
+          portId = (list?.data?.[0]?.port_id as string) || '';
+        }
+        if (!portId) throw new Error('Portfolio not found');
 
-        const { data, error } = await supabase
-          .from('account_groups')
-          .select('group_id, group_name')
-          .eq('port_id', portfolio.port_id);
-
-        // console.log(data, error);
-
-        if (error) throw error;
-        setAccountGroups(data || []);
+        const res = await getAccountGroupsByPortfolioAuthenticated(portId);
+        setAccountGroups((res?.data as any[]) || []);
       } catch (error) {
         console.error('Error fetching account groups:', error);
         toast({
@@ -96,30 +112,55 @@ export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
     if (open) {
       fetchAccountGroups();
     }
-  }, [open, slug, supabase, toast]);
+  }, [open, slug, toast]);
 
   const onSubmit = async (values: FormValues) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
-      const portfolio = await getPortfolioBySlug(slug as string);
-      if (!portfolio) throw new Error('Portfolio not found');
+      const cached = getActivePortfolioClient();
+      console.log('[NewAccountForm] submit -> cookie portfolio:', cached);
+      let portId = cached?.port_id as string | undefined;
+      if (!portId) {
+        const portfolio = await getPortfolioBySlug(slug as string);
+        console.log('[NewAccountForm] submit -> portfolio:', portfolio);
+        portId = portfolio?.port_id;
+      }
+      if (!portId) {
+        const list = await getPortfoliosClient();
+        console.log(
+          '[NewAccountForm] submit fallback portfolios length:',
+          list?.data?.length ?? 0
+        );
+        portId = (list?.data?.[0]?.port_id as string) || '';
+      }
+      if (!portId) {
+        console.error(
+          '[NewAccountForm] No portfolio found for account creation'
+        );
+        toast({
+          title: 'No portfolio',
+          description: 'Create a portfolio first to add accounts.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      const { error } = await supabase.from('accounts').insert({
+      await createAccountAuthenticated({
         name: values.name,
-        // amount: values.amount,
         description: values.description,
         group_id: values.group_id,
-        port_id: portfolio.port_id,
+        port_id: portId,
+        amount:
+          typeof values.amount === 'number'
+            ? values.amount
+            : Number(values.amount || 0),
+        in_total: values.in_total ?? true,
+        hidden: values.hidden ?? false,
       });
 
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Account created successfully',
-      });
+      toast({ title: 'Success', description: 'Account created successfully' });
 
       onOpenChange(false);
       router.refresh();
@@ -210,6 +251,33 @@ export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
                   {methods.formState.errors.description.message}
                 </p>
               )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  id="in_total"
+                  type="checkbox"
+                  checked={methods.watch('in_total')}
+                  onChange={(e) =>
+                    methods.setValue('in_total', e.target.checked)
+                  }
+                />
+                <label htmlFor="in_total" className="text-sm">
+                  Include in totals
+                </label>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="hidden"
+                  type="checkbox"
+                  checked={methods.watch('hidden')}
+                  onChange={(e) => methods.setValue('hidden', e.target.checked)}
+                />
+                <label htmlFor="hidden" className="text-sm">
+                  Hidden
+                </label>
+              </div>
             </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>

@@ -1,5 +1,5 @@
-export type Portfolio = {
-  id: number;
+﻿export type Portfolio = {
+  id: string;
   user_id: string;
   port_id: string;
   title: string;
@@ -8,16 +8,15 @@ export type Portfolio = {
     value: string;
   };
   color: string;
-  userid: string;
+  slug: string;
   created_at: string;
   updated_at: string;
 };
 
-// You might also want to create a type for creating a new portfolio
-export type CreatePortfolio = Omit<
-  Portfolio,
-  'id' | 'created_at' | 'updated_at'
->;
+export type CreatePortfolio = {
+  title: string;
+  icon?: { type: 'icon' | 'emoji'; value: string };
+  color?: string;
+};
 
-// And a type for updating an existing portfolio
 export type UpdatePortfolio = Partial<CreatePortfolio>;

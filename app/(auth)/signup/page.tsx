@@ -1,7 +1,7 @@
-import BackLink from '@/components/back-button';
+﻿import BackLink from '@/components/back-button';
 import { SignUpForm } from '@/components/signup-form';
+import { getCurrentUserServer } from '@/lib/session';
 import { buttonVariants } from '@/components/ui/button';
-import { getUser } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 import { ChevronLeft } from 'lucide-react';
 import { Metadata } from 'next';
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SignUpPage() {
-  const { user } = await getUser();
+  const user = await getCurrentUserServer();
 
   if (user) {
     return redirect('/dashboard');
@@ -45,3 +45,4 @@ export default async function SignUpPage() {
     </div>
   );
 }
+

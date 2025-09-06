@@ -1,8 +1,8 @@
-import React from 'react';
+﻿import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserData } from '@/lib/types/user';
+
 import ProfileForm from '@/components/profile-form';
-import { getUserData } from '@/lib/supabase/server';
+import { getCurrentUserServer } from '@/lib/session';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 async function Profile() {
-  const userData = await getUserData();
+  const user = await getCurrentUserServer();
 
   return (
     <section className="container max-w-2xl mx-auto">
@@ -22,7 +22,7 @@ async function Profile() {
             <CardTitle>Profile Settings</CardTitle>
           </CardHeader>
           <CardContent>
-            <ProfileForm userData={userData} />
+            <ProfileForm userData={user} />
           </CardContent>
         </Card>
       </div>
@@ -31,3 +31,4 @@ async function Profile() {
 }
 
 export default Profile;
+

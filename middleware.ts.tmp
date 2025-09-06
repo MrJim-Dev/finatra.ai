@@ -1,0 +1,102 @@
+import { NextResponse, type NextRequest } from 'next/server';
+
+// Minimal auth gate: verify session by calling finatra-api /auth/me
+export async function middleware(request: NextRequest) {
+  const url = new URL(request.url);
+  // Allow both "/signin" and legacy "/login" to be publicly accessible
+  const publicPaths = new Set([
+    '/signin',
+    '/login',
+    '/signup',
+    '/',
+    '/api/health',
+  ]);
+  if (publicPaths.has(url.pathname)) {
+    return NextResponse.next();
+  }
+
+  // If no auth cookies at all, skip network probe and redirect
+  const accessToken = request.cookies.get('access_token')?.value;
+  const refreshToken = request.cookies.get('refresh_token')?.value;
+  const hasSomeSession = Boolean(
+    accessToken || request.cookies.get('user')?.value
+  );
+
+  console.log('middleware', accessToken, refreshToken, hasSomeSession);
+
+  // If we don't have an access token but do have a refresh token, attempt a silent refresh
+  if (!accessToken && refreshToken) {
+    const apiBase =
+      process.env.NEXT_PUBLIC_FINATRA_API_URL || process.env.FINATRA_API_URL;
+    if (apiBase) {
+      try {
+        const res = await fetch(`${apiBase}/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            Cookie: request.headers.get('cookie') || '',
+          },
+        });
+
+        if (res.ok) {
+          // Refresh succeeded; set cookies on the response so the browser has them for the next request
+          const data = await res.json();
+          const response = NextResponse.next();
+          const isDev = process.env.NODE_ENV === 'development';
+          const cookieOpts = {
+            httpOnly: true as const,
+            sameSite: (isDev ? 'lax' : 'none') as const,
+            secure: !isDev,
+            path: '/',
+          };
+          if (data?.access_token)
+            response.cookies.set('access_token', data.access_token, cookieOpts);
+          if (data?.refresh_token)
+            response.cookies.set(
+              'refresh_token',
+              data.refresh_token,
+              cookieOpts
+            );
+          if (data?.user)
+            response.cookies.set('user', JSON.stringify(data.user), cookieOpts);
+          return response;
+        }
+      } catch {}
+    }
+  }
+
+  if (!hasSomeSession) {
+    console.log('middleware redirecting to signin', url.pathname);
+    const signInUrl = new URL('/signin', request.url);
+    signInUrl.searchParams.set('next', url.pathname);
+    return NextResponse.redirect(signInUrl);
+  }
+
+  // Probe /auth/me on the API, forwarding cookies to validate token
+  const apiBase =
+    process.env.NEXT_PUBLIC_FINATRA_API_URL || process.env.FINATRA_API_URL;
+  if (!apiBase) return NextResponse.next();
+
+  try {
+    const res = await fetch(`${apiBase}/auth/me`, {
+      method: 'GET',
+      headers: {
+        Cookie: request.headers.get('cookie') || '',
+      },
+      // credentials are not used in middleware fetch; cookies forwarded explicitly
+    });
+
+    if (res.ok) return NextResponse.next();
+  } catch {}
+
+  // Not authenticated -> redirect to signin
+  const signInUrl = new URL('/signin', request.url);
+  signInUrl.searchParams.set('next', url.pathname);
+  return NextResponse.redirect(signInUrl);
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|finatra-api|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+};
+

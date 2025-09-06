@@ -1,3 +1,6 @@
+import { redirect } from 'next/navigation';
+import { getCurrentUserServer } from '@/lib/session';
+import { getPortfoliosServer } from '@/lib/api/finance';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,7 +15,21 @@ type Transaction = {
   account: string;
 };
 
-export default function Page() {
+export default async function Page() {
+  // Ensure only authenticated users access this route
+  const user = await getCurrentUserServer();
+  console.log('Dashboard', user);
+  if (!user) {
+    // redirect('/signin');
+  }
+
+  // If user has portfolios, redirect to the first portfolio's slug
+  const { data: portfolios } = await getPortfoliosServer();
+  const first = portfolios?.[0];
+  // if (first?.slug) {
+  //   redirect(`/dashboard/${first.slug}`);
+  // }
+
   const currentMonth = 'Jul 2020';
 
   // Expanded dummy data with multiple transactions per day

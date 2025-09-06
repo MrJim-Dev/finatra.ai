@@ -56,7 +56,6 @@ const renderOptions = (
           <DropdownMenuSubContent
             className="p-0 min-w-[200px] max-h-[300px] overflow-y-auto"
             alignOffset={-4}
-            side="bottom"
             sideOffset={0}
           >
             {renderOptions(option.children, onSelect, selectedValue, openMenus)}

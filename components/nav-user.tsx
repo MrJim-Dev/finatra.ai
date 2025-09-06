@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   BadgeCheck,
@@ -25,12 +25,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { User } from '@supabase/supabase-js';
 import { UserData } from '@/lib/types/user';
-import { signOut } from '@/lib/auth';
+import { signOut } from '@/lib/auth-client';
+import { useRouter } from 'next/navigation';
 
 export function NavUser({ user }: { user: UserData }) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
 
   return (
     <SidebarMenu>
@@ -107,7 +108,12 @@ export function NavUser({ user }: { user: UserData }) {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => signOut()}>
+            <DropdownMenuItem
+              onClick={async () => {
+                await signOut();
+                router.replace('/signin');
+              }}
+            >
               <LogOut />
               Log out
             </DropdownMenuItem>
@@ -117,3 +123,4 @@ export function NavUser({ user }: { user: UserData }) {
     </SidebarMenu>
   );
 }
+

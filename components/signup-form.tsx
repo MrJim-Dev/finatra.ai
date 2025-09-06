@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { buttonVariants } from '@/components/ui/button';
 import {
@@ -9,7 +9,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { signInWith } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { GitHubLogoIcon } from '@radix-ui/react-icons';
@@ -18,7 +17,8 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { toast } from './ui/use-toast';
-import { signUp } from '@/lib/auth';
+import { signUp } from '@/lib/auth-client';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc'; // Import the Google icon
 
 export const userAuthSchema = z.object({
@@ -32,6 +32,8 @@ type FormData = z.infer<typeof userAuthSchema>;
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function SignUpForm({ className, ...props }: UserAuthFormProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const form = useForm<FormData>({
     resolver: zodResolver(userAuthSchema),
     defaultValues: {
@@ -63,31 +65,14 @@ export function SignUpForm({ className, ...props }: UserAuthFormProps) {
       });
     }
 
-    const user = result?.user;
-
-    setIsLoading(false);
-
-    if (!user) {
-      return toast({
-        variant: 'destructive',
-        title: 'Something went wrong.',
-        description: 'Your sign in request failed. Please try again.',
-      });
-    }
-
+    
     toast({
       title: 'Success!',
       description: 'Your account has been created successfully.',
     });
 
-    const referrer = document.referrer;
-    const isInternal = referrer.includes(window.location.origin);
-
-    if (isInternal) {
-      window.location.href = referrer;
-    } else {
-      window.location.href = '/dashboard';
-    }
+    const next = searchParams.get('next') || '/dashboard';
+    window.location.href = next;
   }
 
   return (
@@ -231,22 +216,27 @@ export function SignUpForm({ className, ...props }: UserAuthFormProps) {
           </span>
         </div>
       </div>
-
-      <button
-        type="submit"
-        className={cn(buttonVariants({ variant: 'outline' }))}
-        onClick={async () => {
-          await signInWith('google');
-        }}
-        disabled={isLoading || isGoogleLoading}
-      >
-        {isGoogleLoading ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
+      <div className="grid grid-cols-2 gap-6">
+        <button
+          type="button"
+          className={cn(buttonVariants({ variant: 'outline' }))}
+          disabled
+        >
+          <GitHubLogoIcon className="mr-2 h-4 w-4" />
+          GitHub
+        </button>
+        <button
+          type="button"
+          className={cn(buttonVariants({ variant: 'outline' }))}
+          disabled
+        >
           <FcGoogle className="mr-2 h-4 w-4" />
-        )}{' '}
-        Google
-      </button>
+          Google
+        </button>
+      </div>
     </div>
   );
 }
+
+
+

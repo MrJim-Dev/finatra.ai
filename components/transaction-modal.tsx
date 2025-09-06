@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -32,7 +32,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from './ui/button';
 import MultiLevelSelect from '@/components/ui/custom/multi-level-select';
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createTransaction as apiCreateTransaction, updateTransaction as apiUpdateTransaction } from '@/lib/api/finance';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import type { Account, Category, CategoryView, Option } from '@/types';
@@ -107,7 +107,7 @@ export function TransactionModal({
   defaultType,
   defaultValues,
 }: TransactionModalProps) {
-  const supabase = createClient();
+  
   const [selectedType, setSelectedType] = useState<
     'income' | 'expense' | 'transfer'
   >(defaultType || editingTransaction?.transaction_type || 'income');
@@ -187,24 +187,13 @@ export function TransactionModal({
       let result;
       if (editingTransaction) {
         // Update existing transaction
-        const { data: updateResult, error: updateError } = await supabase
-          .from('transactions')
-          .update(transactionData)
-          .eq('id', editingTransaction.id)
-          .select()
-          .single();
+        const updateResult = await apiUpdateTransaction(editingTransaction.id, transactionData);
 
-        if (updateError) throw updateError;
         result = updateResult;
       } else {
         // Create new transaction
-        const { data: createResult, error: createError } = await supabase
-          .from('transactions')
-          .insert(transactionData)
-          .select()
-          .single();
+        const createResult = await apiCreateTransaction(transactionData);
 
-        if (createError) throw createError;
         result = createResult;
       }
 
@@ -650,3 +639,4 @@ function TransferForm({
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { getUser } from '@/lib/supabase/server';
+﻿import { meServer } from '@/lib/api/auth';
 import { capitalizeWords } from '@/lib/utils';
 import Link from 'next/link';
 import {
@@ -10,6 +10,7 @@ import {
 import ProjectIcon from '@/components/slug/project-icon';
 import { getPublicProjects } from '@/lib/project';
 import { ProjectTypes } from '@/lib/types/project';
+import { getCurrentUserServer } from '@/lib/session';
 import {
   Pagination,
   PaginationContent,
@@ -31,7 +32,7 @@ export default async function CommunityPage({
 }: {
   searchParams: { page: string; search: string };
 }) {
-  const { user } = await getUser();
+  const user = await getCurrentUserServer();
   const page = Number(searchParams.page) || 1;
   const search = searchParams.search || '';
   const pageSize = 9;
@@ -167,3 +168,4 @@ function ProjectCard({ project }: { project: ProjectTypes }) {
     </Link>
   );
 }
+

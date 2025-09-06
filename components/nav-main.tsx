@@ -20,6 +20,7 @@ import {
 
 export function NavMain({
   items,
+  prefix,
 }: {
   items: {
     title: string;
@@ -31,6 +32,7 @@ export function NavMain({
       url: string;
     }[];
   }[];
+  prefix?: string;
 }) {
   return (
     <SidebarGroup>
@@ -38,10 +40,13 @@ export function NavMain({
       <SidebarMenu>
         {items.map((item) => {
           if (!item.items?.length) {
+            const href = item.url.startsWith('./') && prefix
+              ? `${prefix}${item.url.slice(1)}`
+              : item.url;
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton asChild tooltip={item.title}>
-                  <a href={item.url}>
+                  <a href={href}>
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
                   </a>
@@ -70,7 +75,7 @@ export function NavMain({
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
                         <SidebarMenuSubButton asChild>
-                          <a href={subItem.url}>
+                          <a href={subItem.url.startsWith('./') && prefix ? `${prefix}${subItem.url.slice(1)}` : subItem.url}>
                             <span>{subItem.title}</span>
                           </a>
                         </SidebarMenuSubButton>
