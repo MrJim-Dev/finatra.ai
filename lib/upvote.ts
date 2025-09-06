@@ -5,9 +5,8 @@ import { revalidatePath } from "next/cache";
 import { FeatureTypes } from "./types/project";
 import { FeatureView } from "./types/features";
 
-const supabase = createClient();
-
 export async function checkUserUpvote(userId: string, featureId: string) {
+  const supabase = await createClient(); // ← Add await
   const { data, error } = await supabase
     .from('upvotes')
     .select('id')
@@ -33,6 +32,8 @@ export async function handleUpvote(userId: string, featureId: string, hasUpvoted
   (globalThis as any)[debounceKey] = true;
 
   try {
+    const supabase = await createClient(); // ← Add await and move inside try block
+    
     // If it's not a spam click, proceed with the database operation
     if (hasUpvoted) {
       // Remove upvote
@@ -68,6 +69,7 @@ export async function handleUpvote(userId: string, featureId: string, hasUpvoted
 }
 
 export async function getUpvoteCount(featureId: string) {
+  const supabase = await createClient(); // ← Add await
   const { count, error } = await supabase
     .from('upvotes')
     .select('id', { count: 'exact' })
@@ -82,6 +84,7 @@ export async function getUpvoteCount(featureId: string) {
 }
 
 export async function updateFeatureUpvoteCount(feature: FeatureView) {
+  const supabase = await createClient(); // ← Add await
   const count = await getUpvoteCount(feature.id);
 
   const { error } = await supabase

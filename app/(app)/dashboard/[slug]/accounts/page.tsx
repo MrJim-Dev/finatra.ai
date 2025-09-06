@@ -10,6 +10,8 @@ import { NewGroupForm } from '@/components/new-group-form';
 import { NewAccountButton } from '@/components/new-account-button';
 import { createClient } from '@/lib/supabase/server';
 import { getPortfolioBySlug } from '@/lib/portfolio';
+import { getUser } from '@/lib/supabase/server'; // ← Add import
+import { redirect } from 'next/navigation'; // ← Add import
 
 // Update types to match the database schema
 type Account = {
@@ -30,6 +32,12 @@ type AccountGroup = {
 
 // Make the component async
 export default async function Page({ params }: { params: { slug: string } }) {
+  // ← Add authentication check
+  const { user } = await getUser();
+  if (!user) {
+    redirect('/signin');
+  }
+
   const supabase = await createClient();
 
   const portfolio = await getPortfolioBySlug(params.slug);
@@ -47,10 +55,10 @@ export default async function Page({ params }: { params: { slug: string } }) {
 
   // Calculate summary totals from the actual data
   const accountTotal =
-    accountGroups?.reduce((sum, group) => {
+    accountGroups?.reduce((sum: number, group: any) => {
       return (
         sum +
-        group.accounts.reduce((accSum, acc) => {
+        group.accounts.reduce((accSum: number, acc: any) => {
           return acc.in_total && acc.balance > 0
             ? accSum + acc.balance
             : accSum;
@@ -59,10 +67,10 @@ export default async function Page({ params }: { params: { slug: string } }) {
     }, 0) || 0;
 
   const liabilitiesTotal =
-    accountGroups?.reduce((sum, group) => {
+    accountGroups?.reduce((sum: number, group: any) => {
       return (
         sum +
-        group.accounts.reduce((accSum, acc) => {
+        group.accounts.reduce((accSum: number, acc: any) => {
           return acc.in_total && acc.balance < 0
             ? accSum + Math.abs(acc.balance)
             : accSum;
@@ -115,8 +123,9 @@ export default async function Page({ params }: { params: { slug: string } }) {
         </div>
       </div>
 
+      {/* Account Groups */}
       <div className="space-y-4">
-        {accountGroups?.map((group) => (
+        {accountGroups?.map((group: any) => (
           <div key={group.group_id} className="rounded-lg">
             <div className="px-4 py-3">
               <div className="flex items-center justify-between">
@@ -127,7 +136,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
                   ${' '}
                   {group.accounts
                     .reduce(
-                      (sum, account) =>
+                      (sum: number, account: any) =>
                         sum + (account.in_total ? account.balance : 0),
                       0
                     )
@@ -137,8 +146,8 @@ export default async function Page({ params }: { params: { slug: string } }) {
             </div>
             <div className="divide-y divide-border bg-card">
               {group.accounts
-                .filter((account) => !account.hidden)
-                .map((account) => (
+                .filter((account: any) => !account.hidden)
+                .map((account: any) => (
                   <div key={account.account_id} className="px-4 py-2.5">
                     <div className="flex items-center justify-between">
                       <span className="text-sm">{account.name}</span>
