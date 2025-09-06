@@ -1,79 +1,112 @@
 ﻿'use server';
 import { apiFetch, apiFetchServer, type ApiOptions } from './http';
 
+// Dev-only logger
+function dbg(...args: any[]) {
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.log('[finance]', ...args);
+  }
+}
+
+// Use the authenticated proxy for client-side calls so Authorization is forwarded
+async function apiFetchViaAuthProxy<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  if (typeof window === 'undefined') {
+    // Fallback to server fetch when invoked on the server
+    return apiFetchServer<T>(path, init as ApiOptions);
+  }
+  const url = `/api/auth/proxy?path=${encodeURIComponent(path)}`;
+
+  dbg('client proxy ->', init.method || 'GET', path, 'via', url);
+
+  const res = await fetch(url, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init.headers || {}),
+    },
+    ...init,
+  });
+  if (!res.ok) {
+    let message = `Request failed ${res.status}`;
+    let errorDetails = null;
+    try {
+      const body = await res.json();
+      if (body?.message) message = body.message;
+      if (body?.error) message = body.error;
+      errorDetails = body;
+    } catch (parseError) {
+      dbg('client proxy error parse failed <-', res.status, path, parseError);
+    }
+
+    // Enhanced error logging for auth proxy failures
+    if (res.status === 401) {
+      dbg('client proxy auth error <-', res.status, path, {
+        error: message,
+        errorDetails,
+        cookies:
+          typeof document !== 'undefined' ? document.cookie : 'server-side',
+        userAgent:
+          typeof navigator !== 'undefined'
+            ? navigator.userAgent.substring(0, 50)
+            : 'unknown',
+      });
+    } else {
+      dbg('client proxy error <-', res.status, path, message);
+    }
+
+    throw new Error(message);
+  }
+  const text = await res.text();
+  if (!text) return undefined as unknown as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return undefined as unknown as T;
+  }
+}
+
 // Portfolios
 export async function getPortfoliosServer(options: ApiOptions = {}) {
   try {
-    console.log(
-      '[getPortfoliosServer] Fetching portfolios with options:',
-      options
-    );
     const res = await apiFetchServer<{ data: any[]; pagination: any }>(
       '/portfolios',
       { method: 'GET', ...options }
     );
 
-    console.log(
-      '[getPortfoliosServer] Response received:',
-      res ? 'success' : 'empty'
-    );
-
     // Ensure a consistent shape to avoid destructuring errors upstream
     if (!res || typeof res !== 'object' || !('data' in (res as any))) {
-      console.warn(
-        '[getPortfoliosServer] Invalid response format, returning empty data'
-      );
+      // invalid shape; return safe default
       return { data: [], pagination: null } as { data: any[]; pagination: any };
     }
 
-    console.log(
-      '[getPortfoliosServer] Returning portfolios:',
-      res.data?.length ?? 0
-    );
     return res;
   } catch (error) {
-    console.error('[getPortfoliosServer] Error fetching portfolios:', error);
     return { data: [], pagination: null } as { data: any[]; pagination: any };
   }
 }
 
 export async function getPortfoliosClient() {
   try {
-    console.log('[getPortfoliosClient] Fetching portfolios from client');
-    const res = await apiFetch<{ data: any[]; pagination: any }>(
+    const res = await apiFetchViaAuthProxy<{ data: any[]; pagination: any }>(
       '/portfolios',
       { method: 'GET' }
     );
 
-    console.log(
-      '[getPortfoliosClient] Response received:',
-      res ? 'success' : 'empty'
-    );
-
     if (!res || typeof res !== 'object' || !('data' in (res as any))) {
-      console.warn(
-        '[getPortfoliosClient] Invalid response format, returning empty data'
-      );
       return { data: [], pagination: null } as { data: any[]; pagination: any };
     }
-
-    console.log(
-      '[getPortfoliosClient] Returning portfolios:',
-      res.data?.length ?? 0
-    );
     return res;
   } catch (error) {
-    console.error('[getPortfoliosClient] Error fetching portfolios:', error);
-
     // If authentication failed, try with skipAuth for development/fallback
     if (
       error instanceof Error &&
       (error.message.includes('Missing token') ||
         error.message.includes('Invalid token'))
     ) {
-      console.log(
-        '[getPortfoliosClient] Auth failed, trying skipAuth fallback'
-      );
       try {
         const fallbackRes = await apiFetch<{ data: any[]; pagination: any }>(
           '/portfolios',
@@ -85,18 +118,9 @@ export async function getPortfoliosClient() {
           typeof fallbackRes === 'object' &&
           'data' in fallbackRes
         ) {
-          console.log(
-            '[getPortfoliosClient] Fallback successful:',
-            fallbackRes.data?.length ?? 0
-          );
           return fallbackRes;
         }
-      } catch (fallbackError) {
-        console.error(
-          '[getPortfoliosClient] Fallback also failed:',
-          fallbackError
-        );
-      }
+      } catch (fallbackError) {}
     }
 
     throw error; // Re-throw to let calling code handle the error
@@ -108,7 +132,14 @@ export async function createPortfolio(payload: {
   icon?: any;
   color?: string;
 }) {
-  return apiFetch<any>('/portfolios', {
+  if (typeof window !== 'undefined') {
+    return apiFetchViaAuthProxy<any>('/portfolios', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+  // SSR fallback
+  return apiFetchServer<any>('/portfolios', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
@@ -126,9 +157,10 @@ export async function getPortfolioBySlugServer(slug: string) {
 }
 
 export async function getPortfolioBySlugClient(slug: string) {
-  return apiFetch<any>(`/portfolios/by-slug/${encodeURIComponent(slug)}`, {
-    method: 'GET',
-  });
+  return apiFetchViaAuthProxy<any>(
+    `/portfolios/by-slug/${encodeURIComponent(slug)}`,
+    { method: 'GET' }
+  );
 }
 
 // Accounts
@@ -144,21 +176,38 @@ export async function getAccountsByPortfolioServer(portId: string) {
 }
 
 export async function createAccount(payload: any) {
-  return apiFetch<any>('/accounts', {
+  if (typeof window !== 'undefined') {
+    return apiFetchViaAuthProxy<any>('/accounts', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+  return apiFetchServer<any>('/accounts', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
 export async function updateAccount(id: string, payload: any) {
-  return apiFetch<any>(`/accounts/${encodeURIComponent(id)}`, {
+  if (typeof window !== 'undefined') {
+    return apiFetchViaAuthProxy<any>(`/accounts/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+  return apiFetchServer<any>(`/accounts/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }
 
 export async function deleteAccount(id: string) {
-  return apiFetch<any>(`/accounts/${encodeURIComponent(id)}`, {
+  if (typeof window !== 'undefined') {
+    return apiFetchViaAuthProxy<any>(`/accounts/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+  return apiFetchServer<any>(`/accounts/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
 }
@@ -188,21 +237,36 @@ export async function getCategoriesServer(params: {
 }
 
 export async function createCategory(payload: any) {
-  return apiFetch<any>('/categories', {
+  if (typeof window !== 'undefined') {
+    return apiFetchViaAuthProxy<any>('/categories', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+  return apiFetchServer<any>('/categories', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
 export async function updateCategory(id: number, payload: any) {
-  return apiFetch<any>(`/categories/${id}`, {
+  if (typeof window !== 'undefined') {
+    return apiFetchViaAuthProxy<any>(`/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+  return apiFetchServer<any>(`/categories/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }
 
 export async function deleteCategory(id: number) {
-  return apiFetch<any>(`/categories/${id}`, { method: 'DELETE' });
+  if (typeof window !== 'undefined') {
+    return apiFetchViaAuthProxy<any>(`/categories/${id}`, { method: 'DELETE' });
+  }
+  return apiFetchServer<any>(`/categories/${id}`, { method: 'DELETE' });
 }
 
 // Transactions
@@ -226,14 +290,26 @@ export async function getTransactionsServer(params: {
 }
 
 export async function createTransaction(payload: any) {
-  return apiFetch<any>('/transactions', {
+  if (typeof window !== 'undefined') {
+    return apiFetchViaAuthProxy<any>('/transactions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+  return apiFetchServer<any>('/transactions', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
 export async function updateTransaction(id: string, payload: any) {
-  return apiFetch<any>(`/transactions/${id}`, {
+  if (typeof window !== 'undefined') {
+    return apiFetchViaAuthProxy<any>(`/transactions/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  }
+  return apiFetchServer<any>(`/transactions/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
@@ -241,7 +317,7 @@ export async function updateTransaction(id: string, payload: any) {
 
 // Client-side variants
 export async function getAccountsByPortfolioClient(portId: string) {
-  return apiFetch<{ data: any[]; pagination: any }>(
+  return apiFetchViaAuthProxy<{ data: any[]; pagination: any }>(
     `/accounts/by-portfolio/${portId}`,
     { method: 'GET' }
   );
@@ -260,7 +336,7 @@ export async function getTransactionsClient(params: {
   if (params.date_to) qs.set('date_to', params.date_to);
   if (params.page) qs.set('page', String(params.page));
   if (params.limit) qs.set('limit', String(params.limit));
-  return apiFetch<{ data: any[]; pagination: any }>(
+  return apiFetchViaAuthProxy<{ data: any[]; pagination: any }>(
     `/transactions?${qs.toString()}`,
     { method: 'GET' }
   );
@@ -271,14 +347,17 @@ export async function getCategoryHierarchyClient(
   type?: 'income' | 'expense'
 ) {
   const qs = type ? `?type=${type}` : '';
-  return apiFetch<any[]>(`/categories/hierarchy/${portId}${qs}`, {
+  return apiFetchViaAuthProxy<any[]>(`/categories/hierarchy/${portId}${qs}`, {
     method: 'GET',
   });
 }
 export async function getAccountGroupsByPortfolioClient(portId: string) {
-  const res = await apiFetch<any>(`/account-groups/by-portfolio/${portId}`, {
-    method: 'GET',
-  }).catch(() => [] as any[]);
+  const res = await apiFetchViaAuthProxy<any>(
+    `/account-groups/by-portfolio/${portId}`,
+    {
+      method: 'GET',
+    }
+  ).catch(() => [] as any[]);
   if (Array.isArray(res)) {
     return { data: res } as { data: any[] };
   }
@@ -288,21 +367,23 @@ export async function getAccountGroupsByPortfolioClient(portId: string) {
   return { data: [] as any[] } as { data: any[] };
 }
 export async function createAccountGroup(payload: any) {
-  return apiFetch<any>('/account-groups', {
+  return apiFetchViaAuthProxy<any>('/account-groups', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
 export async function updateAccountGroup(id: number, payload: any) {
-  return apiFetch<any>(`/account-groups/${id}`, {
+  return apiFetchViaAuthProxy<any>(`/account-groups/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
 }
 
 export async function deleteAccountGroup(id: number) {
-  return apiFetch<any>(`/account-groups/${id}`, { method: 'DELETE' });
+  return apiFetchViaAuthProxy<any>(`/account-groups/${id}`, {
+    method: 'DELETE',
+  });
 }
 
 // Server-side variant to fetch account groups by portfolio

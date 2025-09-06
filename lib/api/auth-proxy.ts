@@ -1,5 +1,10 @@
 'use client';
 
+const dev = process.env.NODE_ENV === 'development';
+const dlog = (...args: any[]) => {
+  if (dev) console.log('[AuthProxy]', ...args);
+};
+
 // Client-side authenticated API calls using the auth proxy
 export async function authenticatedFetch<T>(
   path: string,
@@ -25,19 +30,15 @@ export async function authenticatedFetch<T>(
 
     // Only log critical auth errors for debugging
     if (response.status === 401) {
-      console.warn(
-        `[AuthProxy] Unauthorized: ${options.method || 'GET'} ${path}`
-      );
+      dlog('Unauthorized:', options.method || 'GET', path);
 
       // Check if we need to re-authenticate
       try {
         const errorBody = JSON.parse(errorMessage);
         if (errorBody?.needsReauth) {
-          console.log(
-            '[AuthProxy] Authentication expired, redirecting to login...'
-          );
+          dlog('Authentication expired, redirecting to signin...');
           // Force redirect to login page
-          window.location.href = '/login';
+          window.location.href = '/signin';
           return;
         }
       } catch (e) {

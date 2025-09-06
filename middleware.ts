@@ -67,42 +67,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Attempt a refresh via the Next rewrite path to preserve same-origin
-  const proxyBase = `${url.origin}/finatra-api`;
-  try {
-    if (refreshToken) {
-      dbg('no access token, attempting refresh via proxy');
-      const refreshRes = await fetch(`${proxyBase}/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          Cookie: request.headers.get('cookie') || '',
-        },
-      });
-      dbg('refresh via proxy ->', refreshRes.status);
-      if (refreshRes.ok) {
-        const data = await refreshRes.json();
-        const isDev = process.env.NODE_ENV === 'development';
-        const response = NextResponse.redirect(url);
-        const cookieOpts: any = {
-          httpOnly: true,
-          sameSite: isDev ? 'lax' : 'none',
-          secure: !isDev,
-          path: '/',
-        };
-        if (data?.access_token)
-          response.cookies.set('access_token', data.access_token, cookieOpts);
-        if (data?.refresh_token)
-          response.cookies.set('refresh_token', data.refresh_token, cookieOpts);
-        if (data?.user)
-          response.cookies.set('user', JSON.stringify(data.user), cookieOpts);
-        dbg('refresh ok, redirecting to retry with new cookies');
-        return response;
-      }
-    }
-  } catch (e) {
-    dbg('refresh via proxy error:', (e as Error)?.message || e);
-  }
-
   // Not authenticated -> redirect to signin
   dbg('no valid session, redirect -> /signin');
   const signInUrl = new URL('/signin', request.url);

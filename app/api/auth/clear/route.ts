@@ -17,6 +17,8 @@ export async function POST() {
       secure: !isDev,
       path: '/',
       maxAge: 0, // This clears the cookie
+      // Set domain to localhost in development to clear cookies across ports
+      ...(isDev ? { domain: 'localhost' } : {}),
     };
 
     // Clear all auth cookies

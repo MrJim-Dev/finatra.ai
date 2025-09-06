@@ -88,57 +88,29 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  try {
-    const { access_token, refresh_token, user } = await req.json();
-    if (!access_token || !refresh_token || !user) {
-      return NextResponse.json(
-        { message: 'Missing token(s) or user' },
-        { status: 400 }
-      );
-    }
+  // DEPRECATED: This endpoint is no longer used since we now call the API directly
+  // for login to get proper Set-Cookie headers. Keeping for backward compatibility.
+  console.warn('[Session] POST - DEPRECATED: Use direct API login instead');
 
-    const isDev = process.env.NODE_ENV === 'development';
-    const res = NextResponse.json({ ok: true });
-    const common = {
-      httpOnly: true,
-      sameSite: isDev ? 'lax' : 'none',
-      secure: !isDev,
-      path: '/',
-    } as const;
-
-    // 1 hour
-    res.cookies.set('access_token', access_token, {
-      ...common,
-      maxAge: 60 * 60,
-    });
-    // 30 days
-    res.cookies.set('refresh_token', refresh_token, {
-      ...common,
-      maxAge: 30 * 24 * 60 * 60,
-    });
-    // Mirror API behavior
-    res.cookies.set('user', JSON.stringify(user), {
-      ...common,
-      maxAge: 30 * 24 * 60 * 60,
-    });
-    return res;
-  } catch (e) {
-    return NextResponse.json({ message: 'Invalid payload' }, { status: 400 });
-  }
+  return NextResponse.json(
+    {
+      message: 'This endpoint is deprecated. Use direct API login instead.',
+      deprecated: true,
+    },
+    { status: 410 } // Gone
+  );
 }
 
 export async function DELETE() {
-  const isDev = process.env.NODE_ENV === 'development';
-  const res = NextResponse.json({ ok: true });
-  const common = {
-    httpOnly: true,
-    sameSite: isDev ? 'lax' : 'none',
-    secure: !isDev,
-    path: '/',
-    maxAge: 0,
-  } as const;
-  res.cookies.set('access_token', '', common);
-  res.cookies.set('refresh_token', '', common);
-  res.cookies.set('user', '', common);
-  return res;
+  // DEPRECATED: This endpoint is no longer used since we now call the API directly
+  // for logout to get proper cookie clearing. Keeping for backward compatibility.
+  console.warn('[Session] DELETE - DEPRECATED: Use direct API logout instead');
+
+  return NextResponse.json(
+    {
+      message: 'This endpoint is deprecated. Use direct API logout instead.',
+      deprecated: true,
+    },
+    { status: 410 } // Gone
+  );
 }

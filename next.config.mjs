@@ -3,6 +3,11 @@ const nextConfig = {
   experimental: {
     serverActions: true,
   },
+  env: {
+    // Make API URL available to client-side code
+    NEXT_PUBLIC_FINATRA_API_URL:
+      process.env.FINATRA_API_URL || 'http://localhost:3333',
+  },
   images: {
     domains: [
       'avatars.githubusercontent.com',

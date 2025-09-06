@@ -16,8 +16,7 @@ export default async function LoginPage() {
   const user = await getCurrentUserServer();
 
   if (user) {
-    // console.log(user);
-    // return redirect('/dashboard');
+    return redirect('/dashboard');
   }
 
   return (

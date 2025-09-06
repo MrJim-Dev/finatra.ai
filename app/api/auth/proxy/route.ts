@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
+const dev = process.env.NODE_ENV === 'development';
+const dlog = (...args: any[]) => {
+  if (dev) console.log('[AuthProxy]', ...args);
+};
+
 // Proxy API calls with server-side authentication
 export async function GET(request: NextRequest) {
   return proxyWithAuth(request, 'GET');
@@ -37,6 +42,8 @@ async function proxyWithAuth(request: NextRequest, method: string) {
     // Get cookies from server-side
     const cookieStore = cookies();
     const accessToken = cookieStore.get('access_token')?.value;
+    const refreshToken = cookieStore.get('refresh_token')?.value;
+    const userCookie = cookieStore.get('user')?.value;
 
     // Safely build cookie header to avoid ByteString encoding errors
     const cookieHeader = cookieStore
@@ -62,14 +69,31 @@ async function proxyWithAuth(request: NextRequest, method: string) {
     const apiUrl = process.env.FINATRA_API_URL || 'http://localhost:3333';
     const targetUrl = `${apiUrl}${targetPath}`;
 
-    // Debug token for authentication issues
-    if (!accessToken) {
-      console.warn(`[AuthProxy] No access token for ${method} ${targetPath}`);
-    } else {
-      // Log first 20 chars of token for debugging
-      console.log(
-        `[AuthProxy] Token present: ${accessToken.substring(0, 20)}... (${accessToken.length} chars)`
+    // Enhanced debug token logging for authentication issues
+    if (dev) {
+      const allCookies = cookieStore.getAll();
+      const authCookies = allCookies.filter(
+        (c) =>
+          c.name === 'access_token' ||
+          c.name === 'refresh_token' ||
+          c.name === 'user'
       );
+
+      dlog(`${method} ${targetPath}`, {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        hasUserCookie: !!userCookie,
+        accessTokenLength: accessToken?.length || 0,
+        accessTokenPrefix: accessToken
+          ? accessToken.substring(0, 10) + '...'
+          : 'undefined',
+        authCookiesCount: authCookies.length,
+        authCookieNames: authCookies.map((c) => c.name),
+        totalCookies: allCookies.length,
+        cookieHeaderLength: cookieHeader.length,
+      });
+    } else {
+      dlog(`${method} ${targetPath}`, 'hasAccess:', !!accessToken);
     }
 
     // Forward the request with server-side cookies and auth headers
@@ -102,110 +126,49 @@ async function proxyWithAuth(request: NextRequest, method: string) {
       headers,
       body,
     });
+    // Do not auto-refresh tokens here; return 401 to the client to handle reauth
 
-    // If we get 401 and have a refresh token, try to refresh
-    if (response.status === 401 && cookieStore.get('refresh_token')?.value) {
-      console.log(`[AuthProxy] Got 401, attempting token refresh...`);
-
-      try {
-        // Try to refresh the token
-        const refreshResponse = await fetch(`${apiUrl}/auth/refresh`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Cookie: cookieHeader,
-          },
-        });
-
-        if (refreshResponse.ok) {
-          console.log(
-            `[AuthProxy] Token refresh successful, retrying original request...`
-          );
-
-          // Get the new cookies from the refresh response
-          const setCookieHeaders =
-            refreshResponse.headers.getSetCookie?.() || [];
-
-          // Update our headers with any new cookies
-          let newCookieHeader = cookieHeader;
-          setCookieHeaders.forEach((setCookie) => {
-            const [nameValue] = setCookie.split(';');
-            if (nameValue.includes('access_token=')) {
-              // Extract the new access token and update Authorization header
-              const newToken = nameValue.split('=')[1];
-              headers.Authorization = `Bearer ${newToken}`;
-            }
-          });
-
-          // Retry the original request with the new token
-          response = await fetch(targetUrl, {
-            method,
-            headers,
-            body,
-          });
-
-          if (response.ok) {
-            console.log(`[AuthProxy] Retry successful after token refresh`);
-          }
-        } else {
-          console.warn(
-            `[AuthProxy] Token refresh failed: ${refreshResponse.status}`
-          );
-
-          // If refresh fails with 401, tokens are completely invalid - clear them
-          if (refreshResponse.status === 401) {
-            console.log(
-              `[AuthProxy] Clearing auth cookies due to failed refresh`
-            );
-
-            // Create response that clears all auth cookies
-            const clearCookiesResponse = NextResponse.json(
-              {
-                error: 'Authentication expired',
-                message: 'Please log in again',
-                needsReauth: true,
-              },
-              { status: 401 }
-            );
-
-            // Clear all auth cookies
-            const isDev = process.env.NODE_ENV === 'development';
-            const cookieOptions = {
-              httpOnly: true,
-              sameSite: isDev ? ('lax' as const) : ('none' as const),
-              secure: !isDev,
-              path: '/',
-              maxAge: 0, // This clears the cookie
-            };
-
-            clearCookiesResponse.cookies.set('access_token', '', cookieOptions);
-            clearCookiesResponse.cookies.set(
-              'refresh_token',
-              '',
-              cookieOptions
-            );
-            clearCookiesResponse.cookies.set('user', '', cookieOptions);
-            clearCookiesResponse.cookies.set(
-              'active_portfolio',
-              '',
-              cookieOptions
-            );
-
-            return clearCookiesResponse;
-          }
-        }
-      } catch (refreshError) {
-        console.error(`[AuthProxy] Token refresh error:`, refreshError);
-      }
-    }
-
-    // Only log failed responses for debugging
+    // Enhanced error logging for development
     if (!response.ok) {
-      console.warn(`[AuthProxy] ${response.status} ${method} ${targetPath}`);
+      if (response.status === 401 && dev) {
+        dlog(`${response.status} ${method} ${targetPath} - Auth failed`, {
+          tokenStatus: {
+            hasAccessToken: !!accessToken,
+            tokenLength: accessToken?.length || 0,
+            tokenType: accessToken ? typeof accessToken : 'undefined',
+            tokenEmpty: accessToken === '',
+            tokenUndefined: accessToken === undefined,
+            tokenNull: accessToken === null,
+          },
+          cookieHeaderLength: cookieHeader.length,
+          hasCookieHeader: !!cookieHeader,
+        });
+      } else {
+        dlog(`${response.status} ${method} ${targetPath}`);
+      }
     }
 
     // Forward the response
     const responseData = await response.text();
+    // If unauthorized, return a standard JSON body to simplify client handling
+    if (response.status === 401) {
+      const errorResponse = {
+        error: 'Unauthorized',
+        message: 'Authentication required',
+        needsReauth: true,
+      };
+
+      // Add debug info in development
+      if (dev) {
+        (errorResponse as any).debug = {
+          originalResponse: responseData,
+          tokenPresent: !!accessToken,
+          cookiesPresent: !!cookieHeader,
+        };
+      }
+
+      return NextResponse.json(errorResponse, { status: 401 });
+    }
 
     return new NextResponse(responseData, {
       status: response.status,
@@ -215,7 +178,7 @@ async function proxyWithAuth(request: NextRequest, method: string) {
       },
     });
   } catch (error) {
-    console.error('[AuthProxy] Error:', error);
+    dlog('Error:', (error as Error)?.message || String(error));
     return NextResponse.json(
       {
         error: 'Proxy request failed',
