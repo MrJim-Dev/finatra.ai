@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { TransactionModal } from './transaction-modal';
 import { createClient } from '@/lib/supabase/client';
-import { getPortfolioBySlug } from '@/lib/portfolio';
+import { fetchPortfolioBySlug } from '@/lib/portfolio-queries';
 import { useParams } from 'next/navigation';
 
 type Account = {
@@ -36,12 +36,11 @@ export function FloatingActionButton({ className }: { className?: string }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categoryView, setCategoryView] = useState<CategoryView[]>([]);
   const [portId, setPortId] = useState<string>('');
-  const supabase = createClient();
 
   useEffect(() => {
     async function fetchData() {
-      // First get the port_id from the slug
-      const portfolio = await getPortfolioBySlug(slug);
+      const supabase = createClient();
+      const portfolio = await fetchPortfolioBySlug(supabase, slug);
 
       if (!portfolio) {
         console.error('Error fetching portfolio');
@@ -82,7 +81,7 @@ export function FloatingActionButton({ className }: { className?: string }) {
     if (slug) {
       fetchData();
     }
-  }, [supabase, slug]);
+  }, [slug]);
 
   return (
     <>
