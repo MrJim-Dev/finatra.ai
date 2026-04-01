@@ -120,4 +120,17 @@ WITH CHECK (auth.role() = 'authenticated');
 DROP POLICY IF EXISTS "Enable delete for authenticated users on products" ON products;
 CREATE POLICY "Enable delete for authenticated users on products" 
 ON products FOR DELETE 
-USING (auth.role() = 'authenticated'); 
+USING (auth.role() = 'authenticated');
+
+-- 10. USERS table - RLS was enabled with zero policies (all SELECT denied for JWT clients).
+-- That broke getUserData() while auth session existed → /signin ↔ /dashboard redirect loop.
+DROP POLICY IF EXISTS "users_select_own" ON public.users;
+DROP POLICY IF EXISTS "users_insert_own" ON public.users;
+DROP POLICY IF EXISTS "users_update_own" ON public.users;
+CREATE POLICY "users_select_own" ON public.users FOR SELECT TO authenticated
+  USING (auth.uid() = id);
+CREATE POLICY "users_insert_own" ON public.users FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = id);
+CREATE POLICY "users_update_own" ON public.users FOR UPDATE TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
@@ -13,7 +13,7 @@ import { Message } from 'ai';
 import { useChat } from 'ai/react';
 import type { TransactionRequest } from '@/types/chat';
 import type { Account, CategoryView } from '@/types';
-import { getPortfolioBySlug } from '@/lib/portfolio';
+import { fetchPortfolioBySlug } from '@/lib/portfolio-queries';
 import { useParams } from 'next/navigation';
 import { useRightSidebar } from '@/lib/context/sidebar-context';
 import ReactMarkdown from 'react-markdown';
@@ -33,7 +33,7 @@ export function AIChatInterface() {
   const { toast } = useToast();
   const pathname = usePathname();
   const slug = pathname?.split('/').filter(Boolean)[1] || '';
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const { messages, input, handleInputChange, handleSubmit, setMessages } =
     useChat({
@@ -87,15 +87,18 @@ export function AIChatInterface() {
 
   useEffect(() => {
     const initPortfolio = async () => {
-      if (slug) {
-        const portfolio = await getPortfolioBySlug(slug);
+      if (!slug) return;
+      try {
+        const portfolio = await fetchPortfolioBySlug(supabase, slug);
         if (portfolio) {
           setPortId(portfolio.port_id);
         }
+      } catch (e) {
+        console.error('Error loading portfolio for chat:', e);
       }
     };
     initPortfolio();
-  }, [slug]);
+  }, [slug, supabase]);
 
   useEffect(() => {
     const fetchAccounts = async () => {
@@ -172,14 +175,9 @@ export function AIChatInterface() {
                       p: ({ children }) => (
                         <p className="mb-2 last:mb-0">{children}</p>
                       ),
-                      code: ({
-                        node,
-                        inline,
-                        className,
-                        children,
-                        ...props
-                      }) => {
-                        if (inline) {
+                      code: ({ className, children, ...props }) => {
+                        const isInline = !className;
+                        if (isInline) {
                           return (
                             <code
                               className="rounded bg-muted px-1 py-0.5"

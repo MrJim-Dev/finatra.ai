@@ -113,7 +113,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ project }) => {
     const { user } = await getUser();
 
     if (!user) {
-      router.replace('/login');
+      router.replace('/signin');
       return;
     }
 
