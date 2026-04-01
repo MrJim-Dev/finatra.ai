@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Resend } from 'resend';
 import FeatureUpdateTemplate from '@/components/email-template/feature-update';
 import { renderToString } from 'react-dom/server';
 import axios from 'axios';
@@ -18,8 +17,6 @@ const emailList = [
   { to: 'verynyze@gmail.com', firstName: 'Nathaniel' },
   { to: 'bermarvillarazojr@gmail.com', firstName: 'Bermar' },
 ];
-
-const resend = new Resend(process.env.NEXT_PUBLIC_RESEND_API_KEY);
 
 const SendEmailPage = () => {
   const [sendingStatus, setSendingStatus] = useState<string>('');

@@ -7,9 +7,8 @@ export function createClient() {
   );
 }
 
-const supabase = createClient();
-
 export async function getUser() {
+  const supabase = createClient();
   const { data } = await supabase.auth.getUser();
 
   return data;
@@ -20,7 +19,9 @@ export async function getUserById(id: string) {
   
   let { data, error } = await supabase
     .from('users')
-    .select('*').eq('id', id).single()
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
 
   if (data) {
     const avatarUrl = getPublicUrl('profiles', data.avatar);

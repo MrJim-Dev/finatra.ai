@@ -1,6 +1,6 @@
 import { SignInForm } from '@/components/signin-form';
 import { buttonVariants } from '@/components/ui/button';
-import { getUser } from '@/lib/supabase/server';
+import { getUser, getUserData } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 import { ChevronLeft } from 'lucide-react';
 import { Metadata } from 'next';
@@ -15,8 +15,13 @@ export const metadata: Metadata = {
 export default async function LoginPage() {
   const { user } = await getUser();
 
+  // Require a readable public.users row so we do not bounce with the app layout
+  // (layout uses getUserData(); session-only would cause /signin ↔ /dashboard loops).
   if (user) {
-    return redirect('/dashboard');
+    const profile = await getUserData();
+    if (profile) {
+      return redirect('/dashboard');
+    }
   }
 
   return (

@@ -1,5 +1,6 @@
 "use server"
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseServiceClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { ProjectTypes } from '../types/project';
 import { User } from '@supabase/supabase-js';
@@ -31,6 +32,18 @@ export async function createClient() {
   );
 }
 
+/** Server-only admin client. Never import this from client code or pass the key to the browser. */
+export async function createServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  }
+  return createSupabaseServiceClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 export async function getPublicUrl(bucket: string, path: string | null): Promise<string | null> {
   if (path === null) {
     return null;
@@ -58,12 +71,16 @@ export async function getUser() {
 export async function getUserData() {
   const supabase = await createClient();
 
-  const {user} = await getUser();
+  const { user } = await getUser();
+  if (!user?.id) {
+    return null;
+  }
 
-  
   let { data, error } = await supabase
     .from('users')
-    .select('*').eq('id', user?.id).single()
+    .select('*')
+    .eq('id', user.id)
+    .single();
 
   if (data) {
     const avatarUrl = getPublicUrl('profiles', data.avatar);
@@ -89,7 +106,7 @@ export async function getUserById(id: string) {
 }
 
 export async function getAllUsers() {
-  const supabase = await createClient();
+  const supabase = await createServiceRoleClient();
   const {
     data: { users },
     error,
@@ -99,10 +116,10 @@ export async function getAllUsers() {
   });
 
   if (error) {
-    return users;
+    return null;
   }
 
-  return;
+  return users;
 }
 
 

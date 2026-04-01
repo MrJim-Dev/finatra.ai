@@ -1,7 +1,9 @@
 export interface Account {
   account_id: string;
   name: string;
-  // Add other account properties as needed
+  currency?: string | null;
+  in_total?: boolean | null;
+  hidden?: boolean | null;
 }
 
 export interface Category {
