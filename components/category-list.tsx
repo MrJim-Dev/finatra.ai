@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { ChevronRight, Plus } from 'lucide-react';
-import { NewAccountButton } from '@/components/new-account-button';
 import {
   Dialog,
   DialogContent,
@@ -24,24 +21,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
-import { getPortfolioBySlug } from '@/lib/portfolio';
+import { fetchPortfolioBySlug } from '@/lib/portfolio-queries';
+import type { CategoryViewData } from '@/lib/types/categories';
 import { CategoryDialog } from './category-dialog';
 import { CategorySection } from './category-section';
-
-type Category = {
-  category_id: string;
-  name: string;
-  type: 'income' | 'expense';
-  subcategories?: Category[];
-  description?: string;
-  created_at: string;
-};
-
-type CategoryGroup = {
-  group_id: string;
-  group_name: string;
-  categories: Category[];
-};
 
 interface CategoryListProps {
   categoryViewData: CategoryViewData[];
@@ -69,9 +52,17 @@ export function CategoryList({ categoryViewData }: CategoryListProps) {
 
   useEffect(() => {
     const fetchPortfolio = async () => {
-      if (params.slug) {
-        const portfolioData = await getPortfolioBySlug(params.slug as string);
+      if (!params.slug) return;
+      const supabase = createClient();
+      try {
+        const portfolioData = await fetchPortfolioBySlug(
+          supabase,
+          params.slug as string
+        );
         setPortfolio(portfolioData);
+      } catch (e) {
+        console.error('Error loading portfolio:', e);
+        setPortfolio(null);
       }
     };
     fetchPortfolio();

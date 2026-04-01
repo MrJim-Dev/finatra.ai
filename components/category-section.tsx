@@ -1,4 +1,5 @@
 // New reusable category section component
+import type { Category, CategoryViewData } from '@/lib/types/categories';
 import { Button } from '@/components/ui/button';
 import { ChevronRight, Plus, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';

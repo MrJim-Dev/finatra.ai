@@ -1,15 +1,11 @@
-type Category = {
+export type Category = {
   id: number;
   name: string;
   subcategories: Category[];
 };
 
-type CategoryViewData = {
+export type CategoryViewData = {
   type: 'income' | 'expense';
   port_id: string;
   categories: Category[];
 };
-
-interface CategoryListProps {
-  categoryViewData: CategoryViewData[];
-}
