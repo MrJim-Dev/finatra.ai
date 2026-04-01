@@ -1,6 +1,10 @@
 import { type ClassValue, clsx } from "clsx";
 import React from "react";
 import { twMerge } from "tailwind-merge";
+import {
+  formatMoneyAmount,
+  DEFAULT_CURRENCY_FALLBACK,
+} from '@/lib/format-money';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -72,9 +76,7 @@ export function useIsMobile() {
   return !!isMobile
 }
 
+/** @deprecated Prefer `formatMoneyAmount(amount, portfolioCurrency)` in dashboard UI. */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
+  return formatMoneyAmount(amount, DEFAULT_CURRENCY_FALLBACK);
 }

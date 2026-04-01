@@ -2,6 +2,9 @@ export type Portfolio = {
   id: number;
   user_id: string;
   port_id: string;
+  /** Default ISO currency when account/transaction currency is null */
+  default_currency?: string | null;
+  slug: string;
   title: string;
   icon: {
     type: 'icon' | 'emoji';
