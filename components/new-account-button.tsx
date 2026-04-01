@@ -35,8 +35,6 @@ export function NewAccountButton() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {console.log('showNewAccountModal:', showNewAccountModal)}
-
       <NewGroupForm
         open={showNewGroupModal}
         onOpenChange={setShowNewGroupModal}

@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
-import { getPortfolioBySlug } from '@/lib/portfolio';
+import { fetchPortfolioBySlug } from '@/lib/portfolio-queries';
 import { createClient } from '@/lib/supabase/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useParams, useRouter } from 'next/navigation';
@@ -39,10 +39,7 @@ interface AccountGroup {
 const formSchema = z.object({
   group_id: z.string().min(1, 'Group is required'),
   name: z.string().min(1, 'Account name is required'),
-  amount: z
-    .string()
-    .optional()
-    .transform((val) => (val ? parseFloat(val) : 0)),
+  amount: z.string().optional(),
   description: z
     .string()
     .max(500, 'Description must be less than 500 characters')
@@ -62,6 +59,7 @@ export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      group_id: '',
       name: '',
       amount: '',
       description: '',
@@ -71,7 +69,7 @@ export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
   useEffect(() => {
     async function fetchAccountGroups() {
       try {
-        const portfolio = await getPortfolioBySlug(slug as string);
+        const portfolio = await fetchPortfolioBySlug(supabase, slug as string);
         if (!portfolio) throw new Error('Portfolio not found');
 
         const { data, error } = await supabase
@@ -103,7 +101,7 @@ export function NewAccountForm({ open, onOpenChange }: NewAccountFormProps) {
     setIsSubmitting(true);
 
     try {
-      const portfolio = await getPortfolioBySlug(slug as string);
+      const portfolio = await fetchPortfolioBySlug(supabase, slug as string);
       if (!portfolio) throw new Error('Portfolio not found');
 
       const { error } = await supabase.from('accounts').insert({

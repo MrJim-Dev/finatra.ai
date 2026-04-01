@@ -14,7 +14,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { getPortfolioBySlug } from '@/lib/portfolio';
+import { fetchPortfolioBySlug } from '@/lib/portfolio-queries';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useState } from 'react';
@@ -54,7 +54,7 @@ export function NewGroupForm({ open, onOpenChange }: NewGroupFormProps) {
 
     try {
       // Get port_id from slug
-      const portfolio = await getPortfolioBySlug(slug as string);
+      const portfolio = await fetchPortfolioBySlug(supabase, slug as string);
       if (!portfolio) throw new Error('Portfolio not found');
 
       const { error } = await supabase.from('account_groups').insert({

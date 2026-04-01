@@ -59,20 +59,51 @@ export function PortfolioSwitcher({ portfolios }: { portfolios: Portfolio[] }) {
   const { isMobile } = useSidebar();
   const router = useRouter();
   const params = useParams();
-
-  // Redirect to first portfolio if no slug is present
-  React.useEffect(() => {
-    if (!params.slug && portfolios.length > 0) {
-      router.push(`/dashboard/${portfolios[0].slug}`);
-    }
-  }, [params.slug, portfolios, router]);
-
-  // Find portfolio matching slug from params or default to first portfolio
-  const initialPortfolio =
-    portfolios.find((p) => p.slug === params.slug) || portfolios[0];
-  const [activePortfolio, setActivePortfolio] =
-    React.useState(initialPortfolio);
+  const list = portfolios ?? [];
   const [showAddPortfolio, setShowAddPortfolio] = React.useState(false);
+
+  const activePortfolio =
+    list.length === 0
+      ? null
+      : list.find((p) => p.slug === params.slug) || list[0];
+
+  React.useEffect(() => {
+    if (!params.slug && list.length > 0) {
+      router.replace(`/dashboard/${list[0].slug}`);
+    }
+  }, [params.slug, list, router]);
+
+  if (list.length === 0) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            size="lg"
+            onClick={() => setShowAddPortfolio(true)}
+            className="w-full"
+          >
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg border border-dashed border-muted-foreground/40">
+              <Plus className="size-4 text-muted-foreground" />
+            </div>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-semibold">Add portfolio</span>
+              <span className="truncate text-xs text-muted-foreground">
+                Create one to use the dashboard
+              </span>
+            </div>
+          </SidebarMenuButton>
+          <AddPortfolioDialog
+            open={showAddPortfolio}
+            onOpenChange={setShowAddPortfolio}
+          />
+        </SidebarMenuItem>
+      </SidebarMenu>
+    );
+  }
+
+  if (!activePortfolio) {
+    return null;
+  }
 
   return (
     <SidebarMenu>
@@ -117,11 +148,10 @@ export function PortfolioSwitcher({ portfolios }: { portfolios: Portfolio[] }) {
             <DropdownMenuLabel className="text-xs text-muted-foreground">
               Portfolios
             </DropdownMenuLabel>
-            {portfolios.map((portfolio, index) => (
+            {list.map((portfolio, index) => (
               <DropdownMenuItem
                 key={portfolio.port_id}
                 onClick={() => {
-                  setActivePortfolio(portfolio);
                   router.push(`/dashboard/${portfolio.slug}`);
                 }}
                 className="gap-2 p-2"

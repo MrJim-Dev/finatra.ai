@@ -1,26 +1,20 @@
 'use client';
 
 import * as React from 'react';
+import { useParams } from 'next/navigation';
 import {
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
   GalleryVerticalEnd,
-  Map,
-  PieChart,
+  LayoutDashboard,
+  type LucideIcon,
   Settings2,
-  SquareTerminal,
+  Tag,
+  Wallet,
 } from 'lucide-react';
 
 import { NavMain } from '@/components/nav-main';
 import { NavProjects } from '@/components/nav-projects';
 import { NavUser } from '@/components/nav-user';
-import {
-  PortfolioSwitcher,
-  TeamSwitcher,
-} from '@/components/portfolio-switcher';
+import { PortfolioSwitcher } from '@/components/portfolio-switcher';
 import {
   Sidebar,
   SidebarContent,
@@ -31,132 +25,49 @@ import {
 import { UserData } from '@/lib/types/user';
 import { Portfolio } from '@/lib/types/portfolio';
 
-// This is sample data.
-const data = {
+function dashboardBasePath(slug: string | undefined, fallbackSlug?: string) {
+  const s = slug || fallbackSlug || '';
+  return s ? `/dashboard/${s}` : '/dashboard';
+}
+
+const staticSidebarMeta = {
   teams: [
     {
-      name: 'Acme Inc',
+      name: 'Finatra',
       logo: GalleryVerticalEnd,
-      plan: 'Enterprise',
-    },
-    {
-      name: 'Acme Corp.',
-      logo: AudioWaveform,
-      plan: 'Startup',
-    },
-    {
-      name: 'Evil Corp.',
-      logo: Command,
-      plan: 'Free',
+      plan: 'Portfolio',
     },
   ],
-  navMain: [
+};
+
+function buildNavMain(base: string) {
+  return [
     {
-      title: 'Playground',
-      url: '#',
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: 'History',
-          url: '#',
-        },
-        {
-          title: 'Starred',
-          url: '#',
-        },
-        {
-          title: 'Settings',
-          url: '#',
-        },
-      ],
+      title: 'Activity',
+      url: base,
+      icon: LayoutDashboard,
     },
     {
       title: 'Accounts',
-      url: './accounts',
-      icon: Bot,
+      url: `${base}/accounts`,
+      icon: Wallet,
     },
-
     {
       title: 'Categories',
-      url: '#',
-      icon: SquareTerminal,
-      isActive: true,
-      items: [
-        {
-          title: 'Income Categories',
-          url: './categories',
-        },
-        {
-          title: 'Expense Categories',
-          url: './categories',
-        },
-      ],
-    },
-    {
-      title: 'Documentation',
-      url: '#',
-      icon: BookOpen,
-      items: [
-        {
-          title: 'Introduction',
-          url: '#',
-        },
-        {
-          title: 'Get Started',
-          url: '#',
-        },
-        {
-          title: 'Tutorials',
-          url: '#',
-        },
-        {
-          title: 'Changelog',
-          url: '#',
-        },
-      ],
+      url: `${base}/categories`,
+      icon: Tag,
     },
     {
       title: 'Settings',
-      url: '#',
+      url: `${base}/settings`,
       icon: Settings2,
-      items: [
-        {
-          title: 'General',
-          url: '#',
-        },
-        {
-          title: 'Team',
-          url: '#',
-        },
-        {
-          title: 'Billing',
-          url: '#',
-        },
-        {
-          title: 'Limits',
-          url: '#',
-        },
-      ],
     },
-  ],
-  projects: [
-    {
-      name: 'Design Engineering',
-      url: '#',
-      icon: Frame,
-    },
-    {
-      name: 'Sales & Marketing',
-      url: '#',
-      icon: PieChart,
-    },
-    {
-      name: 'Travel',
-      url: '#',
-      icon: Map,
-    },
-  ],
+  ];
+}
+
+const data = {
+  ...staticSidebarMeta,
+  projects: [] as { name: string; url: string; icon: LucideIcon }[],
 };
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
@@ -165,13 +76,25 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 }
 
 export function AppSidebar({ user, portfolio, ...props }: AppSidebarProps) {
+  const params = useParams();
+  const paramSlug = params?.slug;
+  const slugFromParams =
+    typeof paramSlug === 'string'
+      ? paramSlug
+      : Array.isArray(paramSlug)
+        ? paramSlug[0]
+        : undefined;
+  const fallbackSlug = portfolio[0]?.slug;
+  const base = dashboardBasePath(slugFromParams, fallbackSlug);
+  const navMain = React.useMemo(() => buildNavMain(base), [base]);
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
         <PortfolioSwitcher portfolios={portfolio} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={navMain} />
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>

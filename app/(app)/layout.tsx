@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { Toaster } from '@/components/ui/toaster';
-import { getUser, getUserById, getUserData } from '@/lib/supabase/server';
+import { getUserData } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import {
   SidebarInset,
@@ -10,7 +10,7 @@ import {
 import { AppSidebar } from '@/components/app-sidebar';
 import { Separator } from '@/components/ui/separator';
 import { BreadcrumbNav } from '@/components/breadcrumb-nav';
-import { FloatingActionButton } from '@/components/floating-action-button';
+import { ConditionalFAB } from '@/components/conditional-fab';
 import { createClient } from '@/lib/supabase/server';
 import { Portfolio } from '@/lib/types/portfolio';
 import { RightSidebarToggle } from '@/components/right-sidebar-toggle';
@@ -29,18 +29,20 @@ const Layout = async ({ children }: LayoutProps) => {
   const isRightSidebarOpen = await getRightSidebarState();
 
   if (!currentUser) {
-    redirect('/login');
+    redirect('/signin');
   }
 
-  const { data: portfolio, error } = await supabase
+  const { data: portfolioRows } = await supabase
     .from('portfolio')
     .select('*')
     .eq('user_id', currentUser.id);
 
+  const portfolio = (portfolioRows ?? []) as Portfolio[];
+
   return (
     <SidebarProvider>
       <RightSidebarProvider>
-        <AppSidebar user={currentUser} portfolio={portfolio as Portfolio[]} />
+        <AppSidebar user={currentUser} portfolio={portfolio} />
         <SidebarInset>
           <div className="flex h-full">
             <div className="flex-1 flex flex-col">
@@ -58,7 +60,7 @@ const Layout = async ({ children }: LayoutProps) => {
                 {!isRightSidebarOpen && (
                   <div className="fixed bottom-6 right-6 flex gap-2 z-50">
                     <AIChatButton />
-                    <FloatingActionButton />
+                    <ConditionalFAB />
                   </div>
                 )}
               </div>
