@@ -46,6 +46,7 @@
     "ai": "^4.1.0",
     "axios": "^1.7.7",
     "badge": "^1.0.3",
+    "better-sqlite3": "^12.8.0",
     "bufferutil": "^4.0.9",
     "class-variance-authority": "^0.7.0",
     "cmdk": "1.0.0",
@@ -80,6 +81,7 @@
     "recharts": "^2.12.7",
     "remark-gfm": "^4.0.0",
     "resend": "^4.0.0",
+    "server-only": "^0.0.1",
     "slate": "^0.103.0",
     "slate-history": "^0.109.0",
     "slate-react": "^0.109.0",
@@ -90,14 +92,17 @@
     "utf-8-validate": "^6.0.5",
     "uuid": "^10.0.0",
     "vercel": "^39.3.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/lodash": "^4.17.7",
     "@types/node": "^20.14.15",
     "@types/react": "^18.3.3",
     "@types/react-beautiful-dnd": "^13.1.8",
     "@types/react-dom": "^18.3.0",
+    "@types/tinycolor2": "^1.4.6",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.11.0",
     "@typescript-eslint/parser": "^8.11.0",
@@ -105,6 +110,8 @@
     "clsx": "^2.1.1",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "framer-motion": "^11.3.24",
     "postcss": "^8.4.41",
     "prettier": "^3.3.3",
@@ -116,5 +123,10 @@
     "fs": false,
     "path": false,
     "os": false
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   }
 }
