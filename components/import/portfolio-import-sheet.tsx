@@ -9,6 +9,7 @@ import {
   Loader2,
   ArrowRight,
   Database,
+  Sparkles,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,7 @@ import { MmbakImportOverview } from '@/components/import/mmbak-import-overview';
 import { PortfolioResetPanel } from '@/components/import/portfolio-reset-panel';
 import type { MmbakExtensionPayload } from '@/lib/import/mmbak-extension';
 import { tagLinksForImportChunk } from '@/lib/import/mmbak-tag-links';
+import { MmStatementUpload } from '@/components/mm-statement-upload';
 
 const PAGE_SIZE = 40;
 const COMMIT_BATCH = 8000;
@@ -82,7 +84,7 @@ export function PortfolioImportSheet({
   onDataChanged,
 }: Props) {
   const { toast } = useToast();
-  const [section, setSection] = React.useState<'import' | 'reset'>('import');
+  const [section, setSection] = React.useState<'import' | 'ai-parse' | 'reset'>('import');
   const [importStep, setImportStep] = React.useState<'idle' | 'preview'>(
     'idle'
   );
@@ -494,11 +496,15 @@ export function PortfolioImportSheet({
 
         <Tabs
           value={section}
-          onValueChange={(v) => setSection(v as 'import' | 'reset')}
+          onValueChange={(v) => setSection(v as 'import' | 'ai-parse' | 'reset')}
           className="flex min-h-0 flex-1 flex-col gap-3 px-1"
         >
-          <TabsList className="grid w-full shrink-0 grid-cols-2">
+          <TabsList className="grid w-full shrink-0 grid-cols-3">
             <TabsTrigger value="import">Import</TabsTrigger>
+            <TabsTrigger value="ai-parse" className="gap-1">
+              <Sparkles className="size-3.5" />
+              AI Parse
+            </TabsTrigger>
             <TabsTrigger value="reset">Reset</TabsTrigger>
           </TabsList>
 
@@ -996,6 +1002,22 @@ export function PortfolioImportSheet({
                   )}
                 </CardContent>
               </Card>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent
+            value="ai-parse"
+            className="mt-0 min-h-0 flex-1 data-[state=inactive]:hidden"
+          >
+            <ScrollArea className="h-[calc(100vh-12rem)] pr-3">
+              <MmStatementUpload
+                accounts={accounts.length > 0 ? accounts : []}
+                onBack={() => setSection('import')}
+                onCommitted={async () => {
+                  resetImportState();
+                  await onDataChanged();
+                }}
+              />
             </ScrollArea>
           </TabsContent>
 

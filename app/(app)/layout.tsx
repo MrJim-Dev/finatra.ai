@@ -18,6 +18,8 @@ import { getRightSidebarState } from '@/lib/actions/sidebar';
 import { AIChatButton } from '@/components/ai-chat-button';
 import { AIChatInterface } from '@/components/ai-chat-interface';
 import { RightSidebarProvider } from '@/lib/context/sidebar-context';
+import { QuickCaptureFAB } from '@/components/quick-capture-fab';
+import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 
 interface LayoutProps {
   children: ReactNode;
@@ -59,6 +61,7 @@ const Layout = async ({ children }: LayoutProps) => {
 
                 {!isRightSidebarOpen && (
                   <div className="fixed bottom-6 right-6 flex gap-2 z-50">
+                    <QuickCaptureFAB />
                     <AIChatButton />
                     <ConditionalFAB />
                   </div>
@@ -69,6 +72,7 @@ const Layout = async ({ children }: LayoutProps) => {
             <AIChatInterface />
           </div>
         </SidebarInset>
+        <MobileBottomNav slug={portfolio[0]?.slug} />
       </RightSidebarProvider>
     </SidebarProvider>
   );
