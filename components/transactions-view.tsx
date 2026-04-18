@@ -352,16 +352,17 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={handlePreviousMonth}
-          className="hover:bg-muted rounded-full p-2"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <span className="font-medium">{currentMonth}</span>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="mb-4 space-y-3">
+        {/* Month navigation — centered, balanced */}
+        <div className="flex items-center justify-center gap-4">
+          <button
+            type="button"
+            onClick={handlePreviousMonth}
+            className="hover:bg-muted rounded-full p-2"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <span className="min-w-[7rem] text-center font-medium">{currentMonth}</span>
           <button
             type="button"
             onClick={handleNextMonth}
@@ -369,11 +370,15 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
           >
             <ChevronRight className="h-5 w-5" />
           </button>
+        </div>
+
+        {/* Filter + import — compact row below */}
+        <div className="flex items-center justify-end gap-2">
           <Select
             value={visibility}
             onValueChange={(v) => setVisibility(v as Visibility)}
           >
-            <SelectTrigger className="h-9 w-[140px]">
+            <SelectTrigger className="h-8 w-auto min-w-[110px] text-xs md:h-9 md:text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -386,10 +391,10 @@ export function TransactionsView({ portfolioId }: TransactionViewProps) {
             type="button"
             variant="outline"
             size="sm"
-            className="gap-1.5"
+            className="h-8 gap-1.5 text-xs md:h-9 md:text-sm"
             onClick={() => setImportSheetOpen(true)}
           >
-            <Upload className="h-4 w-4" />
+            <Upload className="h-3.5 w-3.5" />
             Import
           </Button>
         </div>
