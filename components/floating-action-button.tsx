@@ -88,12 +88,12 @@ export function FloatingActionButton({ className }: { className?: string }) {
       <Button
         onClick={() => setOpen(true)}
         className={cn(
-          'h-14 w-14 rounded-full shadow-lg',
+          'h-11 w-11 md:h-14 md:w-14 rounded-full shadow-lg',
           'hover:scale-105 transition-transform',
           className
         )}
       >
-        <Plus className="h-6 w-6" />
+        <Plus className="h-5 w-5 md:h-6 md:w-6" />
       </Button>
 
       <TransactionModal

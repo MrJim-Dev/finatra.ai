@@ -57,14 +57,24 @@ const Layout = async ({ children }: LayoutProps) => {
               </header>
 
               <div className="flex-1 relative overflow-y-auto">
-                <div className="min-h-full">{children}</div>
+                {/* Extra bottom padding on mobile to clear the fixed bottom nav */}
+                <div className="min-h-full pb-20 md:pb-0">{children}</div>
 
                 {!isRightSidebarOpen && (
-                  <div className="fixed bottom-6 right-6 flex gap-2 z-50">
-                    <QuickCaptureFAB />
-                    <AIChatButton />
-                    <ConditionalFAB />
-                  </div>
+                  <>
+                    {/* Desktop: all FABs in a row at bottom-right */}
+                    <div className="fixed bottom-6 right-6 hidden md:flex gap-2 z-50">
+                      <QuickCaptureFAB />
+                      <AIChatButton />
+                      <ConditionalFAB />
+                    </div>
+
+                    {/* Mobile: stack FABs above the bottom nav, keep only essential ones */}
+                    <div className="fixed bottom-[4.5rem] right-4 flex flex-col gap-2 z-50 md:hidden">
+                      <QuickCaptureFAB />
+                      <ConditionalFAB />
+                    </div>
+                  </>
                 )}
               </div>
             </div>

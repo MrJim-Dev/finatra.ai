@@ -58,11 +58,11 @@ export function QuickCaptureFAB() {
       <Button
         variant="outline"
         size="icon"
-        className="h-14 w-14 rounded-full shadow-lg"
+        className="h-11 w-11 md:h-14 md:w-14 rounded-full shadow-lg bg-background/90 backdrop-blur-sm"
         onClick={() => setOpen(true)}
         title="Quick Capture"
       >
-        <Sparkles className="h-6 w-6" />
+        <Sparkles className="h-5 w-5 md:h-6 md:w-6" />
       </Button>
 
       <MmQuickCapture
